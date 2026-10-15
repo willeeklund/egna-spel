@@ -15,7 +15,9 @@ function taper(w, h, d, tx, tz, shiftZ) {
   g.computeVertexNormals();
   return g;
 }
-const WRAP = HALF + 8;
+const TURN_R = 5;
+const lateral = (lane) => lane.line + (lane.axis === 'z' ? -lane.dir : lane.dir) * LANE;
+const along = (lane, p) => (lane.axis === 'x' ? p.x : p.z);
 
 export class Traffic {
   constructor(game, count = 42) {
@@ -144,15 +146,28 @@ export class Traffic {
     if (!on && this.game.world.bodies.includes(car.body)) this.game.world.removeBody(car.body);
   }
 
+  freeSpot(bearPos, minD, maxD) {
+    let lane, t;
+    for (let tries = 0; tries < 80; tries++) {
+      lane = this.randomLane();
+      t = lane.t;
+      if (roadLines.some((c) => Math.abs(c - t) < 12)) continue;
+      const x = lane.axis === 'z' ? lateral(lane) : t, z = lane.axis === 'z' ? t : lateral(lane);
+      const d = Math.hypot(x - bearPos.x, z - bearPos.z);
+      if (d < minD || d > maxD) continue;
+      if (this.cars.some((o) => o.active && Math.hypot(o.body.position.x - x, o.body.position.z - z) < 12)) continue;
+      break;
+    }
+    return { lane, t };
+  }
+
   spawnLambo(bearPos) {
     const car = this.lambo;
     if (car.active) return false;
-    const lines = roadLines.filter((r) => Math.abs(r - bearPos.x) < 80 || Math.abs(r - bearPos.z) < 80);
-    const line = lines.length ? lines[(Math.random() * lines.length) | 0] : roadLines[0];
-    const axis = Math.abs(line - bearPos.x) < 80 && (Math.abs(line - bearPos.z) >= 80 || Math.random() < 0.5) ? 'z' : 'x';
-    car.lane = { axis, line, dir: Math.random() < 0.5 ? 1 : -1, t: 0 };
+    const { lane, t } = this.freeSpot(bearPos, 70, 130);
+    car.lane = lane;
     if (car.wrecked) this.unwreck(car);
-    this.placeOnLane(car, -car.lane.dir * WRAP);
+    this.placeOnLane(car, t);
     car.speed = car.cruise;
     car.aliveT = 0;
     car.flipped = false;
@@ -173,6 +188,39 @@ export class Traffic {
     body.quaternion.setFromEuler(0, yaw, 0);
     body.velocity.set(0, 0, 0);
     body.angularVelocity.set(0, 0, 0);
+    car.isect = null;
+    car.turn = null;
+  }
+
+  planIsect(car) {
+    const { lane } = car;
+    const t = along(lane, car.body.position);
+    let c = null;
+    for (const r of roadLines) if ((r - t) * lane.dir > 0.5 && (c === null || Math.abs(r - t) < Math.abs(c - t))) c = r;
+    if (c === null) { lane.dir = -lane.dir; this.placeOnLane(car, t); return; }
+    const opts = [];
+    if (c * lane.dir < HALF - 1) opts.push(0, 0);
+    for (const d of [1, -1]) if (lane.line * d < HALF - 1) opts.push(d);
+    let turnDir = opts[(Math.random() * opts.length) | 0];
+    const next = turnDir ? { axis: lane.axis === 'x' ? 'z' : 'x', line: c, dir: turnDir } : null;
+    const start = next ? lateral(next) - lane.dir * TURN_R : 0;
+    if (next && (start - t) * lane.dir < 0) turnDir = 0;
+    car.isect = { c, next: turnDir ? next : null, start };
+  }
+
+  beginTurn(car) {
+    const { lane } = car;
+    const next = car.isect.next;
+    const d0 = this.dirVec(lane), d1 = this.dirVec(next);
+    const P = lane.axis === 'x' ? new THREE.Vector3(lateral(next), 0, lateral(lane)) : new THREE.Vector3(lateral(lane), 0, lateral(next));
+    const center = P.clone().addScaledVector(d0, -TURN_R).addScaledVector(d1, TURN_R);
+    car.turn = { d0, d1, center, s: 0, next };
+    car.isect = null;
+  }
+
+  turnPoint(turn, s) {
+    const phi = s * Math.PI / 2;
+    return turn.center.clone().addScaledVector(turn.d1, -TURN_R * Math.cos(phi)).addScaledVector(turn.d0, TURN_R * Math.sin(phi));
   }
 
   wreck(car) {
@@ -210,12 +258,14 @@ export class Traffic {
     b.wakeUp();
     car.wrecked = false;
     car.flipped = false;
-    car.lane.dir = Math.random() < 0.5 ? 1 : -1;
-    this.placeOnLane(car, -car.lane.dir * WRAP);
+    const { lane, t } = this.freeSpot(this.lastBear || new THREE.Vector3(), 110, 9999);
+    car.lane = lane;
+    this.placeOnLane(car, t);
     car.speed = car.cruise;
   }
 
   update(dt, bearPos) {
+    this.lastBear = bearPos;
     const tmp = new THREE.Vector3();
     for (const car of this.cars) {
       const b = car.body;
@@ -234,7 +284,7 @@ export class Traffic {
         if (car.wreckT > 25 && tmp.distanceTo(bearPos) > 60) this.respawn(car);
         continue;
       }
-      const dir = this.dirVec(car.lane);
+      const dir = car.turn ? this.turnPoint(car.turn, Math.min(1, car.turn.s + 0.01)).sub(this.turnPoint(car.turn, car.turn.s)).normalize() : this.dirVec(car.lane);
       let target = car.cruise * (car.panic > 0 ? 2.3 : 1);
       car.panic = Math.max(0, car.panic - dt);
       car.honkT = Math.max(0, car.honkT - dt);
@@ -266,14 +316,40 @@ export class Traffic {
       if (car.brakeT > 5) car.brakeT = 0;
       if (stop) target = 0;
       car.speed = THREE.MathUtils.lerp(car.speed, target, Math.min(1, dt * (stop ? 6 : 1.5)));
-      b.velocity.set(dir.x * car.speed, 0, dir.z * car.speed);
-      const t = car.lane.axis === 'x' ? b.position.x : b.position.z;
-      if (t * car.lane.dir > WRAP) {
-        if (car.isLambo && car.aliveT > 50) { this.setActive(car, false); continue; }
-        this.placeOnLane(car, -car.lane.dir * WRAP);
-      }
+      if (car.isLambo && car.aliveT > 50 && Math.hypot(b.position.x - bearPos.x, b.position.z - bearPos.z) > 110) { this.setActive(car, false); continue; }
+      this.steer(car, dt);
       car.mesh.position.copy(b.position);
       car.mesh.quaternion.copy(b.quaternion);
     }
+  }
+
+  steer(car, dt) {
+    const b = car.body;
+    const step = car.speed * dt;
+    if (car.turn) {
+      const turn = car.turn;
+      turn.s = Math.min(1, turn.s + step / (TURN_R * Math.PI / 2));
+      const target = this.turnPoint(turn, turn.s);
+      const dt_ = Math.max(dt, 1e-4);
+      b.velocity.set((target.x - b.position.x) / dt_, 0, (target.z - b.position.z) / dt_);
+      const tan = this.turnPoint(turn, Math.min(1, turn.s + 0.01)).sub(this.turnPoint(turn, Math.max(0, turn.s - 0.01)));
+      b.quaternion.setFromEuler(0, Math.atan2(tan.x, tan.z), 0);
+      if (turn.s >= 1) {
+        car.lane = turn.next;
+        car.turn = null;
+        const lat = lateral(car.lane);
+        if (car.lane.axis === 'x') b.position.z = lat; else b.position.x = lat;
+        b.quaternion.setFromEuler(0, Math.atan2(this.dirVec(car.lane).x, this.dirVec(car.lane).z), 0);
+      }
+      return;
+    }
+    const dir = this.dirVec(car.lane);
+    b.velocity.set(dir.x * car.speed, 0, dir.z * car.speed);
+    if (!car.isect) this.planIsect(car);
+    const is = car.isect;
+    if (!is) return;
+    const t = along(car.lane, b.position) + step * car.lane.dir;
+    if (is.next) { if ((t - is.start) * car.lane.dir >= 0) this.beginTurn(car); }
+    else if ((t - is.c) * car.lane.dir > 0) car.isect = null;
   }
 }

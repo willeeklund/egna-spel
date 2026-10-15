@@ -262,6 +262,10 @@ const MISSIONS = [
   { key: 'lambo', text: 'Välta Lamborghinin', goal: 1 },
   { key: 'showerH', text: 'Duscha under en brandpost', goal: 1 },
   { key: 'showerF', text: 'Duscha i fontänen', goal: 1 },
+  { key: 'hideout', text: 'Hitta björnligans gömställe', goal: 1 },
+  { key: 'house', text: 'Riv 3 hus', goal: 3 },
+  { key: 'flowers', text: 'Trampa sönder 40 blommor', goal: 40 },
+  { key: 'swim', text: 'Bada i parkdammen', goal: 1 },
   { key: 'cheese', text: 'Hitta 9 ostbitar i ostbutiken', goal: 9, who: 'rat' },
   { key: 'bigcheese', text: 'Ät jätteosten', goal: 1, who: 'rat' },
   { key: 'statue', text: 'Klättra upp på björnstatyn', goal: 1, who: 'rat' },
@@ -272,6 +276,9 @@ const MISSIONS = [
   { key: 'drivecrash', text: 'Krocka med 5 bilar', goal: 5, who: 'rat' },
   { key: 'drivebus', text: 'Kör en buss', goal: 1, who: 'rat' },
   { key: 'drivelambo', text: 'Kör Lamborghinin', goal: 1, who: 'rat' },
+  { key: 'rathideout', text: 'Hitta björnligans gömställe', goal: 1, who: 'rat' },
+  { key: 'rathouse', text: 'Krascha sönder ett hus med bilen', goal: 1, who: 'rat' },
+  { key: 'ratswim', text: 'Simma i parkdammen', goal: 1, who: 'rat' },
 ];
 const mine = () => MISSIONS.filter((m) => (m.who || 'bear') === who);
 MISSIONS.forEach((m) => (m.n = 0));
@@ -342,6 +349,30 @@ function progress(key, n) {
 const tmpV = new THREE.Vector3();
 const bearPos = new THREE.Vector3();
 const forward = () => new THREE.Vector3(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+const hidden = () => city.tunnel.inside(bearPos);
+const floorAt = () => (hidden() ? bearPos.y : 0) + 0.3;
+
+const THE = { Villa: 'villan', Hyreshus: 'hyreshuset', Skyskrapa: 'skyskrapan' };
+function hurtHouse(b, amount, pos, mission) {
+  const r = city.damageBuilding(b, amount);
+  if (!r) return null;
+  if (r.collapsed) {
+    st.shake = 1.2;
+    award(r.pts, `${THE[b.name]} rasade!`, pos, mission);
+    banner('💥 HUSET RASADE!', `Du rev ${THE[b.name]}! +${r.pts}`);
+  } else popup('KRACK!', `${THE[b.name]} spricker (${r.left} kvar)`, pos, '#ff6b3d');
+  return r;
+}
+
+function tryHatch() {
+  if (!city.tunnel.onHatch(bearPos) || !city.tunnel.openHatch()) return;
+  sfx.crash();
+  st.shake = Math.max(st.shake, 0.6);
+  fx.debris(city.tunnel.hatchPos.clone().setY(0.5), [0x8a5a30, 0x5a3a1e], 20, 8);
+  fx.dust(city.tunnel.hatchPos.clone().setY(0.3), 20, 8);
+  award(200, 'Hemlig lucka!', bearPos);
+  banner('🐾 EN HEMLIG TUNNEL!', 'Gå nerför trappan, in under statyn!');
+}
 
 function hitBody(body, dir, power, up) {
   body.wakeUp();
@@ -378,6 +409,7 @@ function ratBite() {
   if (st.hitCd > 0) return;
   st.hitT = 0.3; st.hitCd = 0.35;
   sfx.squeak();
+  tryHatch();
   const f = forward();
   const nose = bearPos.clone().addScaledVector(f, 0.4).setY(bearPos.y + 0.15);
   for (const p of city.props) {
@@ -387,7 +419,7 @@ function ratBite() {
     hitBody(p.body, f, 4, 3);
   }
   for (const pp of people.list) {
-    if (pp.pos.distanceTo(tmpV.copy(nose).setY(0)) > 1.6) continue;
+    if (hidden() || pp.pos.distanceTo(tmpV.copy(nose).setY(0)) > 1.6) continue;
     people.scare(pp, bearPos, 7);
     sfx.scream();
     award(50, 'EN RÅTTA! AAAH!', pp.pos, 'ratscare');
@@ -401,7 +433,7 @@ function ratSqueak() {
   fx.shockwave(bearPos, 10, 0xffb0c0);
   let n = 0;
   for (const pp of people.list) {
-    if (pp.pos.distanceTo(tmpV.copy(bearPos).setY(0)) < 12 && people.scare(pp, bearPos, 5)) { n++; sfx.scream(); award(30, 'Rädd för råttan!', pp.pos, 'ratscare'); }
+    if (!hidden() && pp.pos.distanceTo(tmpV.copy(bearPos).setY(0)) < 12 && people.scare(pp, bearPos, 5)) { n++; sfx.scream(); award(30, 'Rädd för råttan!', pp.pos, 'ratscare'); }
   }
   if (n === 0) popup('PIIIP!', '', bearPos, '#ff9ab0');
 }
@@ -412,8 +444,10 @@ function doHit() {
   st.hitT = st.hitDur; st.hitCd = 0.42; st.hitSide = -st.hitSide;
   sfx.swing();
   setTimeout(() => {
+    tryHatch();
     const f = forward();
     const center = bearPos.clone().addScaledVector(f, 2.8).setY(bearPos.y + 1.2);
+    const under = hidden();
     let hitSomething = false;
     for (const p of city.props) {
       if (!p.inWorld) continue;
@@ -425,7 +459,7 @@ function doHit() {
       hitSomething = true;
     }
     for (const car of traffic.cars) {
-      if (!car.active) continue;
+      if (!car.active || under) continue;
       tmpV.copy(car.body.position);
       const d = tmpV.clone().sub(center); d.y = 0;
       const reach = car.half[2] * Math.abs(d.clone().normalize().dot(new THREE.Vector3(Math.sin(car.mesh.rotation.y), 0, Math.cos(car.mesh.rotation.y)))) + car.half[0] + 2.4;
@@ -434,34 +468,38 @@ function doHit() {
       hitSomething = true;
     }
     for (const pp of people.list) {
-      if (pp.pos.distanceTo(tmpV.copy(center).setY(0)) > 3.8) continue;
+      if (under || pp.pos.distanceTo(tmpV.copy(center).setY(0)) > 3.8) continue;
       people.scare(pp, bearPos, 9);
       sfx.scream();
       award(50, 'Hoppade av skräck!', pp.pos, 'people');
       hitSomething = true;
     }
     const tip = bearPos.clone().addScaledVector(f, 3.8).setY(1.5);
-    for (const b of city.buildings) {
+    for (const b of under ? [] : city.buildings) {
       if (tip.x > b.min.x - 0.6 && tip.x < b.max.x + 0.6 && tip.z > b.min.z - 0.6 && tip.z < b.max.z + 0.6) {
         if (b.glass) { fx.glass(tip, 18); sfx.crash(); award(30, 'Krossade ett fönster!', tip); }
-        else { fx.debris(tip, [0xb55b3c, 0xd8d0c0, 0x888888], 10, 6); sfx.hit(); award(15, `Bankade på ${b.name.toLowerCase()}n`, tip); }
+        else { fx.debris(tip, [0xb55b3c, 0xd8d0c0, 0x888888], 10, 6); sfx.hit(); award(15, `Bankade på ${THE[b.name] || b.name.toLowerCase()}`, tip); }
+        hurtHouse(b, 1, tip, 'house');
         hitSomething = true;
         break;
       }
     }
     if (hitSomething) { sfx.hit(); st.shake = Math.max(st.shake, 0.35); }
-    fx.dust(center.setY(0.3), 4, 2);
+    fx.dust(center.setY(floorAt()), 4, 2);
   }, 120);
 }
 
 function shockwave(radius, power) {
   sfx.stomp();
   st.shake = 1;
+  tryHatch();
+  const under = hidden();
   fx.shockwave(bearPos, radius);
-  fx.dust(bearPos.clone().setY(0.3), 22, 9);
+  fx.dust(bearPos.clone().setY(floorAt()), 22, 9);
   for (const p of city.props) {
     if (!p.inWorld) continue;
     tmpV.copy(p.body.position);
+    if (Math.abs(tmpV.y - bearPos.y) > 4) continue;
     const d = tmpV.clone().sub(bearPos); d.y = 0;
     const dist = d.length();
     if (dist > radius) continue;
@@ -470,11 +508,11 @@ function shockwave(radius, power) {
     hitBody(p.body, d, power * (0.4 + k), 6 + 10 * k);
   }
   for (const pp of people.list) {
-    if (pp.pos.distanceTo(tmpV.copy(bearPos).setY(0)) < radius && people.scare(pp, bearPos, 6)) { sfx.scream(); award(30, 'Skrämd person!', pp.pos, 'people'); }
+    if (!under && pp.pos.distanceTo(tmpV.copy(bearPos).setY(0)) < radius && people.scare(pp, bearPos, 6)) { sfx.scream(); award(30, 'Skrämd person!', pp.pos, 'people'); }
   }
   let flips = 0;
   for (const car of traffic.cars) {
-    if (!car.active) continue;
+    if (!car.active || under) continue;
     tmpV.copy(car.body.position);
     const d = tmpV.clone().sub(bearPos); d.y = 0;
     const dist = d.length();
@@ -485,6 +523,12 @@ function shockwave(radius, power) {
     flips++;
   }
   if (flips >= 2) award(150 * flips, `STAMPKOMBO x${flips}!`, bearPos);
+  if (under) return;
+  const reach = radius * 0.35;
+  for (const b of [...city.buildings]) {
+    const dx = Math.max(b.min.x - bearPos.x, 0, bearPos.x - b.max.x), dz = Math.max(b.min.z - bearPos.z, 0, bearPos.z - b.max.z);
+    if (Math.hypot(dx, dz) < reach) hurtHouse(b, radius >= 18 ? 2 : 1, bearPos.clone().setY(2), 'house');
+  }
 }
 
 function doStomp() {
@@ -506,11 +550,12 @@ function doRoar() {
   fx.shockwave(bearPos, 30, 0xffd23f);
   st.shake = 0.5;
   let n = 0;
+  const under = hidden();
   for (const pp of people.list) {
-    if (pp.pos.distanceTo(tmpV.copy(bearPos).setY(0)) < 30 && people.scare(pp, bearPos, 3)) { n++; sfx.scream(); award(30, 'Skrämd person!', pp.pos, 'people'); }
+    if (!under && pp.pos.distanceTo(tmpV.copy(bearPos).setY(0)) < 30 && people.scare(pp, bearPos, 3)) { n++; sfx.scream(); award(30, 'Skrämd person!', pp.pos, 'people'); }
   }
   for (const car of traffic.cars) {
-    if (!car.active || car.wrecked || car.panic > 0) continue;
+    if (!car.active || car.wrecked || car.panic > 0 || under) continue;
     tmpV.copy(car.body.position);
     if (tmpV.distanceTo(bearPos) > 32) continue;
     car.panic = 5;
@@ -606,6 +651,7 @@ function enterCar(car) {
   ratBody.collisionResponse = false;
   ratBody.velocity.set(0, 0, 0);
   camYaw = yaw;
+  camera.near = 0.3; camera.updateProjectionMatrix();
   sfx.door();
   setTimeout(() => sfx.honk(), 250);
   const name = car.isLambo ? 'LAMBORGHININ' : car.isBus ? 'BUSSEN' : 'BILEN';
@@ -629,6 +675,7 @@ function exitCar() {
   ratBody.position.set(b.position.x + side.x * (car.half[0] + 0.6), b.position.y + car.half[1] + 0.3, b.position.z + side.z * (car.half[0] + 0.6));
   ratBody.velocity.set(side.x * 2, 3, side.z * 2);
   drive.car = null;
+  camera.near = C.near; camera.updateProjectionMatrix();
   sfx.engine(false);
   sfx.door();
   renderKeys();
@@ -676,6 +723,7 @@ function driveUpdate(dt) {
       fx.debris(nose, [car.color, 0x888888], 10, 6);
       if (blockedBy.glass) fx.glass(nose, 14);
       award(40, 'KRASCH!', nose);
+      hurtHouse(blockedBy, car.isBus || Math.abs(drive.speed) > 22 ? 2 : 1, nose, 'rathouse');
     }
     drive.speed = -drive.speed * 0.25;
   }
@@ -754,7 +802,7 @@ function update(dt) {
   st.running = !!keys.shift;
   if (drive.car) driveUpdate(dt);
   else {
-  const maxSpeed = st.running ? C.run : C.walk;
+  const maxSpeed = (st.running ? C.run : C.walk) * (1 - 0.45 * (st.wade || 0));
   const fwdC = new THREE.Vector3(Math.sin(camYaw), 0, Math.cos(camYaw));
   const rightC = new THREE.Vector3(fwdC.z, 0, -fwdC.x);
   const move = fwdC.multiplyScalar(iz).addScaledVector(rightC, ix);
@@ -803,11 +851,30 @@ function update(dt) {
   world.step(1 / 60, dt, 2);
   checkGrounded();
   if (drive.car) st.grounded = true;
-  if (who === 'rat' && !drive.car && started) {
+  bearPos.set(bearBody.position.x, bearBody.position.y - BR, bearBody.position.z);
+  city.tunnel.update(dt);
+  const under = started && !drive.car && hidden();
+  st.hiddenT = under ? (st.hiddenT || 0) + dt : 0;
+  if (started && !drive.car && city.tunnel.onHatch(bearPos)) {
+    hintEl.classList.add('show');
+    hintEl.innerHTML = who === 'rat' ? 'Det ekar under luckan... Bit i den med <b>H</b>!' : 'Det låter ihåligt här under... Stampa med <b>F</b>!';
+  } else if (under && st.hiddenT < 4) {
+    hintEl.classList.add('show');
+    hintEl.innerHTML = '🤫 Här nere är ni gömda. Ingen kan se er!';
+  } else if (who === 'rat' && !drive.car && started) {
     const near = nearestCar(3.5);
     hintEl.classList.toggle('show', !!near);
     if (near) hintEl.innerHTML = `Tryck <b>B</b> för att hoppa in i ${near.isLambo ? 'Lamborghinin' : near.isBus ? 'bussen' : 'bilen'}!`;
   } else hintEl.classList.remove('show');
+  st.under = THREE.MathUtils.lerp(st.under || 0, under ? 1 : 0, Math.min(1, dt * 3));
+  hemi.intensity = 1 - 0.75 * st.under;
+  scene.environmentIntensity = 0.55 - 0.42 * st.under;
+  const hideKey = who === 'rat' ? 'rathideout' : 'hideout';
+  if (started && city.tunnel.inRoom(bearPos) && !st[hideKey]) {
+    st[hideKey] = true;
+    award(500, 'Björnligans gömställe!', bearPos, hideKey);
+    banner('🐾 BJÖRNLIGANS GÖMSTÄLLE!', 'Här nere hittar ingen er!');
+  }
 
   if (st.grounded && !wasGrounded) {
     if (st.slamming && who === 'bear') {
@@ -816,13 +883,30 @@ function update(dt) {
       bearPos.set(bearBody.position.x, bearBody.position.y - BR, bearBody.position.z);
       shockwave(18, 22);
       popup('MEGASTAMP!', '', bearPos, '#ff6b3d');
-    } else if (st.airTime > 0.4) { sfx.land(); fx.dust(bearPos.clone().setY(0.3), 8, 4); }
+    } else if (st.airTime > 0.4) { sfx.land(); fx.dust(bearPos.clone().setY(floorAt()), 8, 4); }
   }
   st.airTime = st.grounded ? 0 : st.airTime + dt;
   wasGrounded = st.grounded;
 
   bearPos.set(bearBody.position.x, bearBody.position.y - BR, bearBody.position.z);
+  const pond = drive.car ? null : city.ponds.find((p) => p.contains(bearPos, who === 'rat' ? 0.2 : 0.9));
+  st.wade = THREE.MathUtils.lerp(st.wade || 0, pond ? 1 : 0, Math.min(1, dt * 4));
+  if (pond && !st.inPond) {
+    fx.splash(bearPos.clone().setY(0.3), who === 'rat' ? 0.6 : 2.2);
+    for (let k = 0; k < (who === 'rat' ? 4 : 14); k++) fx.splash(bearPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, 0.3, (Math.random() - 0.5) * 2)), who === 'rat' ? 0.5 : 1.6);
+    pond.ripple(bearPos.x, bearPos.z, 1.5, clock);
+    sfx.splash();
+    const key = who === 'rat' ? 'ratswim' : 'swim';
+    if (!st[key]) { st[key] = true; award(100, who === 'rat' ? 'Råttan simmar!' : 'PLASK! Bada!', bearPos, key); }
+  }
+  st.inPond = !!pond;
+  if (pond && st.speed > 1) {
+    st.rippleT = (st.rippleT || 0) - dt;
+    if (st.rippleT <= 0) { st.rippleT = 0.35; pond.ripple(bearPos.x, bearPos.z, who === 'rat' ? 0.5 : 1, clock); sfx.splash(); }
+    if (Math.random() < dt * (who === 'rat' ? 8 : 20)) fx.splash(bearPos.clone().addScaledVector(forward(), who === 'rat' ? 0.2 : 1.6).setY(0.3), who === 'rat' ? 0.4 : 1.3);
+  }
   bear.position.copy(bearPos);
+  bear.position.y -= st.wade * (who === 'rat' ? 0.1 : 1.25);
   bear.rotation.y = st.yaw;
   climb.blend += ((who === 'rat' && climb.active ? 1 : 0) - climb.blend) * Math.min(1, dt * 10);
   st.climbBlend = climb.blend;
@@ -902,9 +986,10 @@ function update(dt) {
   {
     const fc = city.fountain.center;
     const fdist = Math.hypot(bearPos.x - fc.x, bearPos.z - fc.z);
-    if (who === 'bear' && fdist > 1.2 && fdist < 3.8 && bearPos.y < 1.3 && st.speed < 3 && st.grounded) { shower = true; st.showerKind = 'fountain'; }
+    if (who === 'bear' && fdist > 1.2 && fdist < 3.8 && bearPos.y > 0 && bearPos.y < 1.3 && st.speed < 3 && st.grounded) { shower = true; st.showerKind = 'fountain'; }
+    if (who === 'bear' && st.inPond && st.speed < 3 && st.grounded) { shower = true; st.showerKind = 'pond'; }
   }
-  if (shower && !st.showering && clock - (st.lastShower || -99) > 4) progress(st.showerKind === 'fountain' ? 'showerF' : 'showerH', 1);
+  if (shower && !st.showering && clock - (st.lastShower || -99) > 4 && st.showerKind !== 'pond') progress(st.showerKind === 'fountain' ? 'showerF' : 'showerH', 1);
   if (shower) st.lastShower = clock;
   st.showering = shower;
   st.foam = THREE.MathUtils.clamp((st.foam || 0) + dt * (shower ? 0.45 : -0.12), 0, 1);
@@ -913,7 +998,7 @@ function update(dt) {
     st.showerT = (st.showerT || 0) + dt;
     if (Math.random() < dt * 14) fx.bubbles(bearPos.clone().add(new THREE.Vector3(0, 2.8, 0)).addScaledVector(forward(), 0.6), 1, 2.2);
     if (Math.random() < dt * 8) sfx.bubble();
-    if (Math.random() < dt * 20) fx.splash(bearPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.5, 4.2, (Math.random() - 0.5) * 1.5)).addScaledVector(forward(), 0.5), 0.8);
+    if (st.showerKind !== 'pond' && Math.random() < dt * 20) fx.splash(bearPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.5, 4.2, (Math.random() - 0.5) * 1.5)).addScaledVector(forward(), 0.5), 0.8);
     if (st.showerT > 0.9) {
       st.showerT = 0;
       sfx.hum();
@@ -942,11 +1027,21 @@ function update(dt) {
       award(300, 'Bil på taket!', tmpV, 'flip');
     }
   }
+  if (!drive.car && st.grounded && started) {
+    const n = city.trample(bearPos, who === 'rat' ? 0.3 : 1.7);
+    if (n) { st.trampled = (st.trampled || 0) + n; if (!st.trampleT) st.trampleT = 0.4; if (who === 'bear') progress('flowers', n); }
+  }
+  if (st.trampleT > 0) {
+    st.trampleT -= dt;
+    if (st.trampleT <= 0) { st.trampleT = 0; award(5 * st.trampled, pick(['Trampade på blommorna!', 'Blomsterkross!', 'Oj, rabatten!']), bearPos); sfx.wood(); st.trampled = 0; }
+  }
   fx.updateFx(dt);
+  city.update(dt);
   city.fountain.update(clock);
+  for (const p of city.ponds) p.update(clock);
   const fd = Math.hypot(bearPos.x - city.fountain.center.x, bearPos.z - city.fountain.center.z);
   sfx.fountainVolume(started ? THREE.MathUtils.clamp(1 - (fd - 6) / 45, 0, 1) : 0);
-  if (fd < 6.5 && bearPos.y < 1.2 && st.speed > 1 && Math.random() < dt * 12) fx.splash(bearPos.clone().setY(1.08), who === 'rat' ? 0.4 : 1.4);
+  if (fd < 6.5 && bearPos.y > 0 && bearPos.y < 1.2 && st.speed > 1 && Math.random() < dt * 12) fx.splash(bearPos.clone().setY(1.08), who === 'rat' ? 0.4 : 1.4);
   if ((frame++ & 7) === 0) {
     for (const p of city.props) {
       const dx = p.mesh.position.x - bearPos.x, dz = p.mesh.position.z - bearPos.z;
@@ -966,6 +1061,7 @@ function update(dt) {
   const cd = drive.car ? (drive.car.isBus ? 16 : 10) + Math.abs(drive.speed) * 0.12 : camDist;
   const desired = new THREE.Vector3(-Math.sin(camYaw) * cp * cd, sp * cd + (drive.car ? 1 : C.camH * 0.45), -Math.cos(camYaw) * cp * cd).add(camTarget);
   desired.y = Math.max(desired.y, bearPos.y + C.minCamY);
+  if (city.tunnel.inRoom(bearPos)) desired.y = Math.min(desired.y, city.tunnel.ceil - 0.4);
   if (camClip(camTarget, desired)) camPos.copy(desired);
   else camPos.lerp(desired, Math.min(1, dt * 8));
   camera.position.copy(camPos);
@@ -1027,6 +1123,7 @@ function updateUI(dt) {
     lamboArrow.style.transform = `rotate(${ang}rad)`;
     lamboText.textContent = `💰 Lamborghini ${Math.round(Math.hypot(vx, vz))} m`;
   }
+  if (city.mapDirty) { city.mapDirty = false; minimap.drawBackground(); }
   minimap.draw(bearPos, camYaw, st.yaw, who, lamboShow ? lambo.body.position : null);
   if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) bannerEl.classList.remove('show'); }
 }

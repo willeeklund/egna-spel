@@ -87,6 +87,10 @@ Allt som björnen knuffar, slår eller stampar iväg ger poäng:
 | Slår till nära en person så den hoppar av skräck | 50 |
 | En ballong flyger iväg | 20 |
 | Dricker vatten ur en trasig brandpost | 10 per klunk |
+| Trampar sönder blommor i en rabatt | 5 per blomma |
+| **River en villa** | **300** |
+| **River ett hyreshus** | **500** |
+| **River en skyskrapa** | **800** |
 | **Välter en bil** | **200** |
 | **Bil på taket** (bilen landar upp och ner) | **+300** |
 | **Välter en buss** | **500** |
@@ -111,7 +115,7 @@ När du är en råtta blir allt jättestort! Kameran kommer ner nära marken, oc
 | Stå på toppen av musstatyn | 1000 |
 | Kapa en bil / buss / Lamborghini | 100 / 300 / 500 |
 | Krocka med en bil när du kör | 200 (som att välta den) |
-| Krascha in i ett hus | 40 |
+| Krascha in i ett hus (huset spricker, så småningom rasar det) | 40 |
 | Bita nära en person ("EN RÅTTA! AAAH!") | 50 |
 | Pipa så att en person blir rädd | 30 |
 
@@ -130,11 +134,45 @@ Gå fram till en bil, buss eller till och med Lamborghinin som råtta. När det 
 
 Krocka med andra bilar så voltar de. Lamborghinin är snabbast och bussen är långsammast. Människor hoppar alltid undan i tid. När du hoppar ur rullar bilen vidare av sig själv.
 
+## 💥 Riv hus
+Alla villor, hyreshus och skyskrapor går att riva! Slå på huset med **H** så skakar det och spricker. Ju fler slag, desto mörkare och trasigare blir det:
+
+- **Villa:** 3 slag
+- **Hyreshus:** 5 slag
+- **Skyskrapa:** 6 slag
+
+En vanlig stamp (**F**) bredvid ett hus räknas som ett slag och en **MEGASTAMP** som två. Råttan kan också krascha sönder hus med bilen. När huset inte håller längre rasar det ihop i ett dammoln, bitar flyger åt alla håll och kvar blir en grushög. Huset försvinner också från kartan.
+
+## 🌷 Blommor
+Rabatterna vid villorna och i parken går sönder när du trampar på dem. Blommorna viker sig och kronbladen flyger. Både björnen och råttan kan trampa sönder dem.
+
+## 🦆 Parkdammen
+Dammen i parken är riktigt vatten med vågor, näckrosor och vass. Gå ut i den så sjunker björnen ner i vattnet och plaskar runt, och det blir ringar på vattnet där den går. Står björnen still i dammen så badar den och tvålar in sig, precis som i fontänen. Råttan kan simma i dammen!
+
+## 🚗 Trafiken
+Bilarna kör hela tiden runt på stadens gator och svänger i korsningarna. Det är alltid lika många bilar i stan. En bil som har vält bärgas efter en stund och kommer tillbaka på en gata långt bort från dig.
+
 ## 🚿 Björnen duschar
 Ställ björnen i vattnet från en trasig brandpost, eller i fontänen nära vattenstrålarna. Då reser han sig på bakbenen, gnuggar sig med tassarna, blir alldeles vit av **tvållödder** och nynnar medan såpbubblorna flyger. Skrubb skrubb! Varje skrubb ger 15 poäng, och det finns uppdrag för att duscha både under en brandpost och i fontänen. Löddret sköljs bort sakta när han går därifrån.
 
 ## ⛲ Fontänen
 Fontänen på torget har tolv vattenstrålar som bågar in mot statyn. Vattenytan har vågor och solglitter, och det blir ringar och skum där strålarna landar. Det porlar när man kommer nära, och det plaskar om man vadar i vattnet.
+
+## 🐾 Björnligans gömställe
+Under statyn finns en hemlig tunnel där björnligan kan gömma sig. Så här tar du dig ner:
+
+1. Gå till **torget** med guldstatyn (följ ⭐ på kartan).
+2. Mellan fontänen och gatan där du börjar spelet ligger en stor **trälucka med en björntass** målad på. Den ligger platt i marken, så titta noga!
+3. Ställ dig på luckan. Står det *"Det låter ihåligt här under..."* är du rätt!
+4. **Björnen:** stampa med **F** (eller slå med **H**). **Råttan:** bit i luckan med **H**. Luckan flyger upp!
+5. Gå nerför **trappan** och in genom gången. Nu är du i **björnligans gömställe** rakt under statyn!
+
+Där nere finns en soffa, en skattkista full med guldmynt, tunnor, lyktor och efterlysningsaffischer på björnen och råttan. Ingen människa ser dig där nere, så ingen blir rädd hur mycket du än vrålar. Gå uppför trappan igen när du vill tillbaka ut i stan. När luckan är öppen syns en 🐾 på kartan.
+
+| Gömställebus | Poäng |
+|---|---|
+| Öppna den hemliga luckan | 200 |
+| Hitta björnligans gömställe (både björnen och råttan har det som uppdrag) | 500 |
 
 ## 🗺️ Kartan
 
@@ -144,6 +182,7 @@ Nere i högra hörnet finns en rund karta över staden. Den vrider sig med kamer
 - 🧀 **Ostbutiken** (visas tydligt när du är råtta)
 - 🌳 **Parkerna**
 - 💰 **Lamborghinin**, när den är i stan
+- 🐾 **Luckan till björnligans gömställe**, när du har öppnat den
 - Blå hus är skyskrapor, orangea hus är hyreshus och gula hus är villor.
 
 Tryck **M** för att göra kartan stor och se hela staden.
@@ -186,7 +225,7 @@ Ju fler poäng, desto finare titel:
 - Leta upp bussarna (de är röda, gula eller blå och långa). De ger mycket poäng!
 - Följ den gula pilen när Lamborghinin kommer. Den är värd 1000 poäng!
 - Stampa (F) mitt i en folksamling för att skrämma många personer på en gång.
-- Välta bilar försvinner efter en stund och nya bilar kommer in i staden.
+- Välta bilar bärgas efter en stund och kommer tillbaka på en gata långt bort, så det finns alltid lika många bilar i stan.
 
 ---
 
@@ -210,6 +249,8 @@ bear-game/
     ├── bear.js     Björnen och hur den rör sig
     ├── rat.js      Råttan och hur den rör sig
     ├── fountain.js Fontänen med vatten, strålar och droppar
+    ├── pond.js     Parkdammen med vågor, ringar på vattnet, näckrosor och vass
+    ├── tunnel.js   Den hemliga tunneln och björnligans gömställe under statyn
     ├── minimap.js  Kartan i hörnet
     ├── fx.js       Effekter: skräp, damm, glassplitter, vatten och tryckvågor
     ├── audio.js    Ljudeffekter

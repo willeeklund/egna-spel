@@ -2,6 +2,12 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Fountain } from './fountain.js';
+import { Pond } from './pond.js';
+import { Tunnel, HOLE } from './tunnel.js';
+import * as fx from './fx.js';
+
+const HOUSE = { Villa: { hp: 3, pts: 300 }, Hyreshus: { hp: 5, pts: 500 }, Skyskrapa: { hp: 6, pts: 800 } };
+const RUBBLE = [0x9a9a9a, 0x7d7d7d, 0xb5a58f, 0x6b6e72];
 
 export const PITCH = 70;
 export const ROAD = 14;
@@ -129,6 +135,8 @@ export class City {
     this.tex = makeTextures();
     this.buildings = [];
     this.props = [];
+    this.chunks = [];
+    this.collapsing = [];
     this.templates = {};
     this.buildMaterials();
     this.buildPropTemplates();
@@ -137,6 +145,7 @@ export class City {
     this.buildStreetProps();
     this.buildOutskirts();
     this.buildBounds();
+    this.buildFlowers();
     this.flushBatch();
     this.camBoxes.push(...this.buildings.filter((b) => !b.noCam));
   }
@@ -203,9 +212,115 @@ export class City {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.scene.add(mesh);
-    this.addStatic(x, 0.2 + h / 2, z, w / 2, h / 2, d / 2);
-    this.buildings.push({ min: new THREE.Vector3(x - w / 2, 0, z - d / 2), max: new THREE.Vector3(x + w / 2, h + 0.2, z + d / 2), name: opts.name || 'Hus', glass: !!opts.glass });
-    return mesh;
+    const body = this.addStatic(x, 0.2 + h / 2, z, w / 2, h / 2, d / 2);
+    const b = this.house({ min: new THREE.Vector3(x - w / 2, 0, z - d / 2), max: new THREE.Vector3(x + w / 2, h + 0.2, z + d / 2), name: opts.name || 'Hus', glass: !!opts.glass }, [mesh], body);
+    b.tint = materials.filter((m) => m !== this.m.roofTop);
+    b.chunkMat = materials[0];
+    return b;
+  }
+
+  house(b, meshes, body) {
+    const def = HOUSE[b.name];
+    Object.assign(b, { meshes, body, hp: def.hp, maxHp: def.hp, pts: def.pts, shakeT: 0 });
+    this.buildings.push(b);
+    return b;
+  }
+
+  damageBuilding(b, amount = 1) {
+    if (!b.maxHp || b.hp <= 0) return null;
+    b.hp -= amount;
+    b.shakeT = 0.35;
+    const k = Math.max(0, b.hp) / b.maxHp;
+    for (const m of b.tint || []) m.color.setScalar(0.45 + 0.55 * k);
+    if (b.hp > 0) return { left: b.hp };
+    this.collapse(b);
+    return { collapsed: true, pts: b.pts };
+  }
+
+  collapse(b) {
+    this.world.removeBody(b.body);
+    this.buildings.splice(this.buildings.indexOf(b), 1);
+    const ci = this.camBoxes.indexOf(b);
+    if (ci >= 0) this.camBoxes.splice(ci, 1);
+    this.mapDirty = true;
+    const w = b.max.x - b.min.x, d = b.max.z - b.min.z, h = b.max.y;
+    const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+    this.collapsing.push({ b, t: 0, h, cx, cz, w, d, base: b.meshes.map((m) => m.position.clone()) });
+    this.game.sfx.rumble();
+    this.game.sfx.crash();
+    const size = THREE.MathUtils.clamp(Math.min(w, d) / 5, 0.8, 2.6);
+    for (let i = 0; i < 16; i++) {
+      const s = size * rnd(0.6, 1.2);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(s, s * rnd(0.5, 1), s), Math.random() < 0.5 ? b.chunkMat : std(pick(RUBBLE), 0.9));
+      mesh.castShadow = true;
+      const p = new THREE.Vector3(cx + rnd(-w / 2, w / 2), rnd(1, Math.min(h, 18)), cz + rnd(-d / 2, d / 2));
+      mesh.position.copy(p);
+      this.scene.add(mesh);
+      const body = new CANNON.Body({ mass: 40, material: this.mat });
+      body.addShape(new CANNON.Box(new CANNON.Vec3(s / 2, s * 0.35, s / 2)));
+      body.position.set(p.x, p.y, p.z);
+      const out = new THREE.Vector3(p.x - cx, 0, p.z - cz).normalize();
+      body.velocity.set(out.x * rnd(4, 10), rnd(3, 9), out.z * rnd(4, 10));
+      body.angularVelocity.set(rnd(-5, 5), rnd(-5, 5), rnd(-5, 5));
+      body.allowSleep = true;
+      this.world.addBody(body);
+      this.chunks.push({ mesh, body, t: 0 });
+    }
+    const pile = new THREE.Group();
+    for (let i = 0; i < 40; i++) {
+      const s = rnd(0.6, 2.4);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(s, s * rnd(0.3, 0.6), s * rnd(0.6, 1.2)), std(pick(RUBBLE), 0.9));
+      const rx = rnd(-0.5, 0.5), rz = rnd(-0.5, 0.5);
+      m.position.set(cx + rx * w, 0.2 + rnd(0, 0.5) * (1 - Math.max(Math.abs(rx), Math.abs(rz)) * 1.6), cz + rz * d);
+      m.rotation.set(rnd(-0.3, 0.3), rnd(0, 3), rnd(-0.3, 0.3));
+      pile.add(m);
+    }
+    const rubble = bake(pile, { roughness: 0.95, metalness: 0 });
+    rubble.visible = false;
+    this.scene.add(rubble);
+    this.collapsing.at(-1).rubble = rubble;
+  }
+
+  update(dt) {
+    for (const b of this.buildings) {
+      if (!(b.shakeT > 0)) continue;
+      b.shakeT = Math.max(0, b.shakeT - dt);
+      const a = b.shakeT * 0.6;
+      for (const m of b.meshes) { m.rotation.z = Math.sin(b.shakeT * 70) * a * 0.02; m.rotation.x = Math.cos(b.shakeT * 60) * a * 0.015; }
+    }
+    for (let i = this.collapsing.length - 1; i >= 0; i--) {
+      const c = this.collapsing[i];
+      c.t += dt;
+      const k = Math.min(1, c.t / 2.6);
+      const drop = (c.h + 2) * k * k;
+      c.b.meshes.forEach((m, j) => {
+        m.position.set(c.base[j].x + (Math.random() - 0.5) * 0.4, c.base[j].y - drop, c.base[j].z + (Math.random() - 0.5) * 0.4);
+        m.rotation.z = Math.sin(c.t * 9) * 0.02;
+      });
+      if (Math.random() < dt * 30) {
+        const side = Math.random() < 0.5;
+        const px = c.cx + (side ? (Math.random() < 0.5 ? -1 : 1) * c.w / 2 : rnd(-c.w / 2, c.w / 2));
+        const pz = c.cz + (side ? rnd(-c.d / 2, c.d / 2) : (Math.random() < 0.5 ? -1 : 1) * c.d / 2);
+        fx.dust(new THREE.Vector3(px, 0.5, pz), 3, 4, 2.2);
+      }
+      if (k >= 1) {
+        for (const m of c.b.meshes) m.visible = false;
+        c.rubble.visible = true;
+        fx.dust(new THREE.Vector3(c.cx, 1, c.cz), 30, Math.max(c.w, c.d) * 0.7, 2.5);
+        this.collapsing.splice(i, 1);
+      }
+    }
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
+      const ch = this.chunks[i];
+      ch.t += dt;
+      ch.mesh.position.copy(ch.body.position);
+      ch.mesh.quaternion.copy(ch.body.quaternion);
+      if (ch.t > 30) {
+        this.scene.remove(ch.mesh);
+        this.world.removeBody(ch.body);
+        this.chunks.splice(i, 1);
+      }
+    }
   }
 
   windowMats(texSet, w, h, d) {
@@ -220,16 +335,29 @@ export class City {
     return [sx, sx, this.m.roofTop, this.m.roofTop, sz, sz];
   }
 
+  slabAround(x0, x1, z0, z1, y0, y1, h) {
+    const box = (a0, a1, b0, b1) => this.addStatic((a0 + a1) / 2, (y0 + y1) / 2, (b0 + b1) / 2, (a1 - a0) / 2, (y1 - y0) / 2, (b1 - b0) / 2);
+    box(x0, h.x0, z0, z1);
+    box(h.x1, x1, z0, z1);
+    box(h.x0, h.x1, z0, h.z0);
+    box(h.x0, h.x1, h.z1, z1);
+  }
+
+  holeShape(x0, x1, z0, z1, h) {
+    const rect = (a0, a1, b0, b1, P) => new P([new THREE.Vector2(a0, -b0), new THREE.Vector2(a1, -b0), new THREE.Vector2(a1, -b1), new THREE.Vector2(a0, -b1)]);
+    const s = rect(x0, x1, z0, z1, THREE.Shape);
+    s.holes.push(rect(h.x0, h.x1, h.z0, h.z1, THREE.Path));
+    return s;
+  }
+
   buildGround() {
-    const grass = this.tex.grass.clone(); grass.needsUpdate = true; grass.repeat.set(200, 200);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), std(0xffffff, 1, 0, { map: grass }));
-    ground.rotation.x = -Math.PI / 2;
+    const grass = this.tex.grass.clone(); grass.needsUpdate = true; grass.repeat.set(1 / 12, 1 / 12);
+    const groundGeo = new THREE.ShapeGeometry(this.holeShape(-1200, 1200, -1200, 1200, HOLE));
+    groundGeo.rotateX(-Math.PI / 2);
+    const ground = new THREE.Mesh(groundGeo, std(0xffffff, 1, 0, { map: grass, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 }));
     ground.receiveShadow = true;
     this.scene.add(ground);
-    const gb = new CANNON.Body({ mass: 0, material: this.mat });
-    gb.addShape(new CANNON.Plane());
-    gb.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-    this.world.addBody(gb);
+    this.slabAround(-1200, 1200, -1200, 1200, -1.5, 0, HOLE);
 
     const len = 2 * HALF + ROAD;
     for (const axis of ['x', 'z']) {
@@ -237,8 +365,8 @@ export class City {
         const t = this.tex.road.clone(); t.needsUpdate = true; t.repeat.set(1, len / 14);
         const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD, len), std(0xffffff, 0.92, 0, { map: t }));
         road.rotation.x = -Math.PI / 2;
-        if (axis === 'x') { road.rotation.z = Math.PI / 2; road.position.set(0, 0.012, r); }
-        else road.position.set(r, 0.014, 0);
+        if (axis === 'x') { road.rotation.z = Math.PI / 2; road.position.set(0, 0.03, r); }
+        else road.position.set(r, 0.036, 0);
         road.receiveShadow = true;
         this.scene.add(road);
       }
@@ -247,7 +375,7 @@ export class City {
     for (const a of roadLines) for (const b of roadLines) {
       const g = new THREE.PlaneGeometry(ROAD, ROAD);
       g.rotateX(-Math.PI / 2);
-      g.translate(a, 0.016, b);
+      g.translate(a, 0.042, b);
       squares.push(g);
     }
     const isect = new THREE.Mesh(mergeGeometries(squares), std(0x4a4d52, 0.95));
@@ -260,7 +388,7 @@ export class City {
         for (let k = -2; k <= 2; k++) {
           const g = new THREE.PlaneGeometry(rot ? 2.6 : 1, rot ? 1 : 2.6);
           g.rotateX(-Math.PI / 2);
-          g.translate(a + dx + (rot ? 0 : k * 2.2), 0.02, b + dz + (rot ? k * 2.2 : 0));
+          g.translate(a + dx + (rot ? 0 : k * 2.2), 0.048, b + dz + (rot ? k * 2.2 : 0));
           stripes.push(g);
         }
       }
@@ -288,10 +416,20 @@ export class City {
     for (let i = -N; i <= N; i++) for (let j = -N; j <= N; j++) {
       const cx = i * PITCH, cz = j * PITCH;
       const kind = this.blockKind(i, j);
-      const base = new THREE.Mesh(new THREE.BoxGeometry(B, 0.2, B), kind === 'downtown' || kind === 'plaza' ? pavMat : this.m.concrete);
-      base.position.set(cx, 0.1, cz);
-      this.batch(base);
-      this.addStatic(cx, 0.1, cz, B / 2, 0.1, B / 2);
+      if (kind === 'plaza') {
+        const ptex = this.tex.paving.clone(); ptex.needsUpdate = true; ptex.repeat.set(1 / 4, 1 / 4);
+        const geo = new THREE.ExtrudeGeometry(this.holeShape(cx - B / 2, cx + B / 2, cz - B / 2, cz + B / 2, HOLE), { depth: 0.2, bevelEnabled: false });
+        geo.rotateX(-Math.PI / 2);
+        const top = new THREE.Mesh(geo, std(0xffffff, 0.9, 0, { map: ptex }));
+        top.castShadow = top.receiveShadow = true;
+        this.scene.add(top);
+        this.slabAround(cx - B / 2, cx + B / 2, cz - B / 2, cz + B / 2, 0, 0.2, HOLE);
+      } else {
+        const base = new THREE.Mesh(new THREE.BoxGeometry(B, 0.2, B), kind === 'downtown' ? pavMat : this.m.concrete);
+        base.position.set(cx, 0.1, cz);
+        this.batch(base);
+        this.addStatic(cx, 0.1, cz, B / 2, 0.1, B / 2);
+      }
       if (kind === 'villas' || kind === 'park' || kind === 'apartments') {
         const lot = new THREE.Mesh(new THREE.PlaneGeometry(B - 6, B - 6), lawnMat);
         lot.rotation.x = -Math.PI / 2;
@@ -306,12 +444,13 @@ export class City {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const w = rnd(15, 21), d = rnd(15, 21), h = rnd(28, 95);
       const x = cx + sx * 12.5, z = cz + sz * 12.5;
-      this.addBuilding(x, z, w, h, d, this.windowMats(this.tex.office, w, h, d), { name: 'Skyskrapa', glass: true });
+      const b = this.addBuilding(x, z, w, h, d, this.windowMats(this.tex.office, w, h, d), { name: 'Skyskrapa', glass: true });
       if (Math.random() < 0.5) {
         const top = new THREE.Mesh(new THREE.BoxGeometry(w * 0.5, 4, d * 0.5), this.m.roof);
         top.position.set(x, 0.2 + h + 2, z);
         top.castShadow = true;
         this.scene.add(top);
+        b.meshes.push(top);
       }
     }
     for (let k = 0; k < 3; k++) this.spawnProp(pick(['crate', 'crate', 'cone', 'trash']), cx + rnd(-3, 3), cz + rnd(-26, 26), rnd(0, 6));
@@ -322,14 +461,18 @@ export class City {
     for (const s of [-1, 1]) {
       const w = along ? 44 : 15, d = along ? 15 : 44, h = rnd(12, 22);
       const x = cx + (along ? 0 : s * 13), z = cz + (along ? s * 13 : 0);
-      this.addBuilding(x, z, w, h, d, this.windowMats(this.tex.apartment, w, h, d), { name: 'Hyreshus' });
+      const b = this.addBuilding(x, z, w, h, d, this.windowMats(this.tex.apartment, w, h, d), { name: 'Hyreshus' });
+      const awnings = new THREE.Group();
       for (const fs of [-1, 1]) for (let k = -1; k <= 1; k++) {
         const aw = new THREE.Mesh(new THREE.BoxGeometry(along ? 6 : 1.8, 0.18, along ? 1.8 : 6), pick(this.m.awnings));
         aw.castShadow = true;
         if (along) { aw.position.set(x + k * 13, 3.6, z + fs * (d / 2 + 0.9)); aw.rotation.x = fs * 0.35; }
         else { aw.position.set(x + fs * (w / 2 + 0.9), 3.6, z + k * 13); aw.rotation.z = -fs * 0.35; }
-        this.batch(aw);
+        awnings.add(aw);
       }
+      const baked = bake(awnings, { roughness: 0.8, metalness: 0 });
+      this.scene.add(baked);
+      b.meshes.push(baked);
     }
     for (let k = 0; k < 3; k++) this.tree(cx + (along ? rnd(-20, 20) : rnd(-2, 2)), cz + (along ? rnd(-2, 2) : rnd(-20, 20)));
     this.spawnProp('bench', cx + (along ? 8 : 0), cz + (along ? 0 : 8), along ? 0 : Math.PI / 2);
@@ -375,18 +518,20 @@ export class City {
       g.add(frame, win);
     }
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    g.position.set(x, 0.2, z);
-    if (facing < 0) g.rotation.y = Math.PI;
-    this.batch(g);
-    this.addStatic(x, 0.2 + h / 2, z, w / 2, h / 2, d / 2);
-    this.buildings.push({ min: new THREE.Vector3(x - w / 2, 0, z - d / 2), max: new THREE.Vector3(x + w / 2, h + 3, z + d / 2), name: 'Villa', glass: false });
+    const out = bake(g, { roughness: 0.75, metalness: 0.05 });
+    const mat = out.children[0].material = out.children[0].material.clone();
+    out.position.set(x, 0.2, z);
+    if (facing < 0) out.rotation.y = Math.PI;
+    this.scene.add(out);
+    const phys = this.addStatic(x, 0.2 + h / 2, z, w / 2, h / 2, d / 2);
+    const b = this.house({ min: new THREE.Vector3(x - w / 2, 0, z - d / 2), max: new THREE.Vector3(x + w / 2, h + 3, z + d / 2), name: 'Villa', glass: false }, [out], phys);
+    b.tint = [mat];
+    b.chunkMat = wall;
   }
 
   park(cx, cz) {
-    const pond = new THREE.Mesh(new THREE.CircleGeometry(9, 40), this.m.water);
-    pond.rotation.x = -Math.PI / 2;
-    pond.position.set(cx + 8, 0.22, cz - 6);
-    this.scene.add(pond);
+    this.ponds ??= [];
+    this.ponds.push(new Pond(this.scene, cx + 8, cz - 6, 9, this.game.sunDir));
     for (let k = 0; k < 14; k++) {
       const x = cx + rnd(-24, 24), z = cz + rnd(-24, 24);
       if (Math.hypot(x - cx - 8, z - cz + 6) < 11) continue;
@@ -401,6 +546,8 @@ export class City {
 
   plaza(cx, cz) {
     this.fountain = new Fountain(this.scene, cx, cz, this.game.sunDir);
+    this.camBoxes ??= [];
+    this.tunnel = new Tunnel(this);
     const pedestal = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.4, 2.4), this.m.stone);
     pedestal.position.set(cx, 2.3, cz);
     pedestal.castShadow = pedestal.receiveShadow = true;
@@ -445,7 +592,7 @@ export class City {
     for (let a = 0; a < 8; a++) {
       const ang = a / 8 * Math.PI * 2;
       const x = cx + Math.cos(ang) * 15, z = cz + Math.sin(ang) * 15;
-      if (z < cz - 12) continue;
+      if (z < cz - 12 || a === 0) continue;
       this.spawnProp(a % 2 ? 'bench' : 'lamp', x, z, -ang + Math.PI / 2);
     }
     for (let k = 0; k < 6; k++) this.spawnProp('cone', cx + rnd(-20, 20), cz + rnd(20, 25), 0);
@@ -561,17 +708,69 @@ export class City {
   }
 
   flowerBed(x, z, w, d) {
-    const geo = this.flowerGeo ??= new THREE.IcosahedronGeometry(0.18, 0);
     const bed = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, d), std(0x5a3a22, 1));
     bed.position.set(x, 0.27, z);
     this.batch(bed);
-    const mat = pick(this.m.flowers);
+    this.flowers ??= [];
+    const ci = (Math.random() * this.m.flowers.length) | 0;
     for (let i = 0; i < w * d * 1.5; i++) {
-      const f = new THREE.Mesh(geo, Math.random() < 0.7 ? mat : pick(this.m.flowers));
-      f.position.set(x + rnd(-w / 2 + 0.2, w / 2 - 0.2), rnd(0.5, 0.7), z + rnd(-d / 2 + 0.2, d / 2 - 0.2));
-      f.castShadow = false;
-      this.batch(f);
+      const c = Math.random() < 0.7 ? ci : (Math.random() * this.m.flowers.length) | 0;
+      this.flowers.push({ x: x + rnd(-w / 2 + 0.2, w / 2 - 0.2), y: rnd(0.5, 0.7), z: z + rnd(-d / 2 + 0.2, d / 2 - 0.2), c, rot: rnd(0, 6), alive: true });
     }
+  }
+
+  buildFlowers() {
+    const list = this.flowers || [];
+    const bloomGeo = new THREE.IcosahedronGeometry(0.18, 0);
+    const stemGeo = new THREE.CylinderGeometry(0.025, 0.025, 1, 5).translate(0, 0.5, 0);
+    const counts = this.m.flowers.map(() => 0);
+    for (const f of list) f.i = counts[f.c]++;
+    this.bloomMeshes = this.m.flowers.map((mat, c) => new THREE.InstancedMesh(bloomGeo, mat, Math.max(1, counts[c])));
+    this.stemMesh = new THREE.InstancedMesh(stemGeo, this.m.stem, Math.max(1, list.length));
+    this.flowerGrid = new Map();
+    list.forEach((f, k) => {
+      f.k = k;
+      this.setFlower(f, false);
+      const key = `${Math.floor(f.x / 4)},${Math.floor(f.z / 4)}`;
+      if (!this.flowerGrid.has(key)) this.flowerGrid.set(key, []);
+      this.flowerGrid.get(key).push(f);
+    });
+    for (const m of [...this.bloomMeshes, this.stemMesh]) { m.receiveShadow = true; this.scene.add(m); }
+  }
+
+  setFlower(f, broken) {
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+    if (broken) {
+      e.set(Math.PI / 2 - 0.15, f.rot, 0, 'YXZ');
+      m.compose(new THREE.Vector3(f.x, 0.36, f.z), q.setFromEuler(e), new THREE.Vector3(1, f.y - 0.3, 1));
+      this.stemMesh.setMatrixAt(f.k, m);
+      const tip = new THREE.Vector3(0, 1, 0).applyQuaternion(q).multiplyScalar(f.y - 0.3);
+      m.compose(new THREE.Vector3(f.x + tip.x, 0.38, f.z + tip.z), q.setFromEuler(e.set(0, f.rot, 0)), new THREE.Vector3(1.3, 0.25, 1.3));
+    } else {
+      m.compose(new THREE.Vector3(f.x, 0.33, f.z), q.identity(), new THREE.Vector3(1, f.y - 0.33, 1));
+      this.stemMesh.setMatrixAt(f.k, m);
+      m.compose(new THREE.Vector3(f.x, f.y, f.z), q.setFromEuler(e.set(0, f.rot, 0)), new THREE.Vector3(1, 1, 1));
+    }
+    this.bloomMeshes[f.c].setMatrixAt(f.i, m);
+    this.stemMesh.instanceMatrix.needsUpdate = true;
+    this.bloomMeshes[f.c].instanceMatrix.needsUpdate = true;
+  }
+
+  trample(pos, r) {
+    if (!this.flowerGrid || pos.y > 1.2 || pos.y < -0.5) return 0;
+    let n = 0;
+    for (let gx = Math.floor((pos.x - r) / 4); gx <= Math.floor((pos.x + r) / 4); gx++) {
+      for (let gz = Math.floor((pos.z - r) / 4); gz <= Math.floor((pos.z + r) / 4); gz++) {
+        for (const f of this.flowerGrid.get(`${gx},${gz}`) || []) {
+          if (!f.alive || Math.hypot(f.x - pos.x, f.z - pos.z) > r) continue;
+          f.alive = false;
+          this.setFlower(f, true);
+          fx.debris(new THREE.Vector3(f.x, f.y, f.z), [this.m.flowers[f.c].color.getHex(), 0x2f8a2a], 4, 3);
+          n++;
+        }
+      }
+    }
+    return n;
   }
 
   tree(x, z, collide = true) {

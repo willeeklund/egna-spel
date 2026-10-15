@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FLOOR } from './tunnel.js';
 
 const particles = [];
 const MAX = 500;
@@ -30,7 +31,7 @@ function spawn(geo, mat, pos, vel, size, life, opts = {}) {
   mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
   mesh.castShadow = !!opts.shadow;
   scene.add(mesh);
-  particles.push({ mesh, vel, life, maxLife: life, size, gravity: opts.gravity ?? 25, grow: opts.grow ?? 0, spin: opts.spin ?? 6, floor: opts.floor ?? true });
+  particles.push({ mesh, vel, life, maxLife: life, size, gravity: opts.gravity ?? 25, grow: opts.grow ?? 0, spin: opts.spin ?? 6, floor: opts.floor ?? true, floorY: pos.y < -0.8 ? FLOOR + 0.1 : 0.1 });
 }
 
 const tmp = new THREE.Vector3();
@@ -86,7 +87,7 @@ export function shockwave(pos, radius, color = 0xfff1c4) {
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
   const m = new THREE.Mesh(geo, mat);
   m.rotation.x = -Math.PI / 2;
-  m.position.copy(pos); m.position.y = 0.3;
+  m.position.copy(pos); m.position.y = pos.y < -0.8 ? pos.y + 0.3 : 0.3;
   scene.add(m);
   rings.push({ m, t: 0, dur: 0.5, radius });
 }
@@ -98,8 +99,8 @@ export function updateFx(dt) {
     if (p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); continue; }
     p.vel.y -= p.gravity * dt;
     p.mesh.position.addScaledVector(p.vel, dt);
-    if (p.floor && p.mesh.position.y < 0.1) {
-      p.mesh.position.y = 0.1;
+    if (p.floor && p.mesh.position.y < p.floorY) {
+      p.mesh.position.y = p.floorY;
       p.vel.y *= -0.3; p.vel.x *= 0.6; p.vel.z *= 0.6;
     }
     p.mesh.rotation.x += p.spin * dt;

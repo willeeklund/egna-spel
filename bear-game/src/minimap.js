@@ -93,6 +93,7 @@ export class Minimap {
     icon(shop.x, shop.z, '🧀', who === 'rat' ? 'OSTBUTIK' : '', who === 'rat');
     icon(PITCH * 2, -PITCH * 2, '🌳', 'PARK');
     icon(-PITCH * 2, PITCH * 2, '🌳', 'PARK');
+    if (this.city.tunnel.open) icon(this.city.tunnel.hatchPos.x, this.city.tunnel.hatchPos.z + 6, '🐾', '');
     if (lambo) icon(lambo.x, lambo.z, '💰', '', true);
     const px = Math.sin(playerYaw), pz = Math.cos(playerYaw);
     const ang = Math.atan2(px * rx + pz * rz, px * fx + pz * fz);

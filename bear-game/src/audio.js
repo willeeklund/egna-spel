@@ -120,6 +120,12 @@ export const sfx = {
     tone(1350, 1100, 0.3, { type: 'sine', gain: 0.15 });
     noise(0.1, { freq: 3000, type: 'highpass', gain: 0.2 });
   },
+  splash() { if (!throttle('splash', 220)) noise(0.3, { freq: 700 + Math.random() * 500, type: 'bandpass', gain: 0.3, q: 1.2 }); },
+  rumble() {
+    tone(60, 25, 2.5, { gain: 0.9, attack: 0.1 });
+    noise(2.8, { freq: 180, gain: 1.0, attack: 0.15 });
+    noise(1.5, { freq: 2200, type: 'highpass', gain: 0.15, delay: 0.3 });
+  },
   stomp() {
     tone(90, 22, 0.9, { gain: 1.0 });
     noise(0.8, { freq: 260, gain: 0.8, attack: 0.01 });

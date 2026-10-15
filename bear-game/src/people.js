@@ -139,7 +139,7 @@ export class People {
       p.scaredCd = Math.max(0, p.scaredCd - dt);
       const toBear = tmp.set(p.pos.x - bearPos.x, 0, p.pos.z - bearPos.z);
       const dist = toBear.length();
-      if (p.state !== 'panic' && dist < (this.game.scareRadius ?? 7)) {
+      if (bearPos.y > -0.8 && p.state !== 'panic' && dist < (this.game.scareRadius ?? 7)) {
         if (this.scare(p, bearPos, 4)) this.game.onScared?.(p);
       }
       let vx = 0, vz = 0, spd = 0;
