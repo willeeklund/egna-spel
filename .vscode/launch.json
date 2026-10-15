@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🐻 Starta Björnbus",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/bear-game",
+      "command": "npm install && npm run dev -- --open"
+    },
+    {
+      "name": "🚀 Starta Stitch fantastiska värld",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/stitch-fantastiska-varld",
+      "command": "npm install && npm run dev"
+    }
+  ]
+}

@@ -15,6 +15,19 @@ Spelen är ett sätt för barnen att lära sig använda AI-verktyg. De hittar p�
 
 Du behöver [Node.js](https://nodejs.org) (version 24, se `.nvmrc` – kör `nvm use`).
 
+### Från VS Code (enklast)
+
+1. Öppna hela den här mappen (`egna-spel`) i VS Code: **Arkiv → Öppna mapp…** (File → Open Folder…).
+2. Klicka på **Kör och felsök** i sidomenyn till vänster (ikonen med en play-knapp och en bugg), eller tryck `Ctrl+Shift+D` (`Cmd+Shift+D` på Mac).
+3. Välj spel i listan högst upp:
+   - **🐻 Starta Björnbus**
+   - **🚀 Starta Stitch fantastiska värld**
+4. Tryck på den gröna play-knappen (eller `F5`). Spelet startar och öppnas i webbläsaren.
+
+Stoppa spelet med den röda fyrkanten i verktygsfältet som dyker upp högst upp (eller `Shift+F5`).
+
+### Från terminalen
+
 ```bash
 cd <spelets-mapp>
 npm install
