@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Björnbus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="score-box">
+      <div id="score">0</div>
+      <div id="rank">Liten nalle</div>
+      <div id="combo"></div>
+    </div>
+    <div id="missions">
+      <h3>Busuppdrag</h3>
+      <ul id="mission-list"></ul>
+    </div>
+    <div id="keys"></div>
+    <canvas id="minimap"></canvas>
+    <div id="map-hint">M = stor karta</div>
+    <div id="cooldowns"></div>
+  </div>
+
+  <div id="lambo"><div id="lambo-arrow">▲</div><div id="lambo-text">💰 Lamborghini</div></div>
+  <div id="hint"></div>
+  <div id="popups"></div>
+  <div id="banner"></div>
+
+  <div id="start">
+    <div class="card">
+      <h1>BJÖRN<span>BUS</span></h1>
+      <p class="tag">Välj vem du vill vara. Staden är din lekplats!</p>
+      <div class="chars">
+        <button class="char sel" data-char="bear"><span class="e">🐻</span><b>Björn</b><small>Superstark. Slår, stampar och välter bilar!</small></button>
+        <button class="char" data-char="rat"><span class="e">🐀</span><b>Råtta</b><small>Liten och snabb. Klättrar och letar ost!</small></button>
+      </div>
+      <div class="grid">
+        <div><kbd>W A S D</kbd> Gå (eller piltangenter)</div>
+        <div><kbd>Mus</kbd> Titta runt</div>
+        <div><kbd>Shift</kbd> Spring</div>
+        <div><kbd>Space</kbd> Hoppa</div>
+        <div><kbd>H</kbd> Slå (björn) / bita (råtta)</div>
+        <div><kbd>F</kbd> Stampa (bara björnen)</div>
+        <div><kbd>R</kbd> Vråla (björn) / pipa (råtta)</div>
+        <div><kbd>C</kbd> Byt mellan björn och råtta</div>
+        <div><kbd>B</kbd> Råttan hoppar in i en bil och kör!</div>
+        <div><kbd>+ / −</kbd> Zooma (eller mushjulet)</div>
+        <div><kbd>M</kbd> Stor eller liten karta</div>
+        <div><kbd>Q / E</kbd> Vrid kameran</div>
+      </div>
+      <button id="play">SPELA!</button>
+      <p class="small">Klicka i spelet för att styra med musen. Esc släpper musen.</p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
