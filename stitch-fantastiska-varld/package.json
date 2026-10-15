@@ -1,0 +1,21 @@
+{
+  "name": "stitch-fantastiska-varld",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview --open"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.14.0",
+    "three": "0.169.0"
+  },
+  "devDependencies": {
+    "vite": "5.4.10"
+  }
+}
