@@ -28,9 +28,9 @@ const G = {
   cap: new THREE.SphereGeometry(0.17, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
 };
 
-function makePerson({ rich = false, kid = false } = {}) {
-  const shirt = rich ? 0x1a1a2e : pick(SHIRTS);
-  const pants = rich ? 0x1a1a2e : pick(PANTS);
+export function makePerson({ rich = false, kid = false, police = false } = {}) {
+  const shirt = police ? 0x1f3f8f : rich ? 0x1a1a2e : pick(SHIRTS);
+  const pants = police ? 0x15203f : rich ? 0x1a1a2e : pick(PANTS);
   const skin = pick(SKIN);
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -50,13 +50,20 @@ function makePerson({ rich = false, kid = false } = {}) {
   });
   mesh(G.head, skin, 0, 1.72, 0);
   mesh(G.eye, 0x111111, -0.06, 1.75, 0.145); mesh(G.eye, 0x111111, 0.06, 1.75, 0.145);
-  if (rich) {
+  if (police) {
+    const hat = mesh(G.cap, 0x15203f, 0, 1.76, 0); hat.scale.set(1.05, 0.9, 1.05);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), mat(0xffffff)); band.position.set(0, 1.79, 0); body.add(band);
+    const peak = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.03, 0.14), mat(0x111111)); peak.position.set(0, 1.78, 0.17); body.add(peak);
+    mesh(G.eye, 0xffd23f, 0, 1.87, 0.15).scale.setScalar(1.6);
+    const vest = mesh(G.torso, 0xd4ff3a, 0, 1.27, 0); vest.scale.set(1.16, 0.7, 0.8);
+    mesh(G.eye, 0xffd23f, -0.1, 1.38, 0.17).scale.setScalar(1.5);
+  } else if (rich) {
     mesh(G.hatBrim, 0x111111, 0, 1.85, 0); mesh(G.hatTop, 0x111111, 0, 2.0, 0);
     const chain = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 6, 16), mat(0xffd700, 0.2)); chain.rotation.x = Math.PI / 2.4; chain.position.set(0, 1.45, 0.08); body.add(chain);
   } else if (Math.random() < 0.3) mesh(G.cap, pick(SHIRTS), 0, 1.76, 0);
   else { const h = mesh(G.head, pick(HAIR), 0, 1.77, -0.03); h.scale.set(1.05, 0.75, 1.05); }
   let balloon = null;
-  if (!rich && Math.random() < (kid ? 0.6 : 0.15)) {
+  if (!rich && !police && Math.random() < (kid ? 0.6 : 0.15)) {
     balloon = new THREE.Group();
     const b = new THREE.Mesh(G.balloon, mat(pick(BALLOONS), 0.25)); b.position.y = 1.3; b.scale.set(1, 1.15, 1); b.castShadow = true;
     const s = new THREE.Mesh(G.string, mat(0xffffff)); s.position.y = 0.6;

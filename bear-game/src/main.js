@@ -9,6 +9,8 @@ import { makeRatModel, animateRat } from './rat.js';
 import { Minimap } from './minimap.js';
 import { initAudio, sfx } from './audio.js';
 import * as fx from './fx.js';
+import { Police, stars } from './police.js';
+import { Villains } from './villains.js';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -69,8 +71,11 @@ const game = { scene, world, physMat, sfx, makeBearModel, makeRatModel, sunDir }
 const city = new City(game);
 game.city = city;
 const traffic = new Traffic(game, 44);
+game.traffic = traffic;
 const people = new People(game, 80);
 game.people = people;
+const police = new Police(game);
+game.police = police;
 world.broadphase.autoDetectAxis();
 
 const bearMats = makeBearMaterials();
@@ -78,6 +83,8 @@ const bearModel = makeBearModel(bearMats.fur, bearMats.light, bearMats.dark);
 const ratModel = makeRatModel();
 ratModel.visible = false;
 scene.add(bearModel, ratModel);
+const villains = new Villains(game, { bearMats, makeBearModel, makeRatModel, animateBear, animateRat });
+const suspect = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), heat: 0, hidden: false, caught: false, catchable: true, catchR: 2.3, chaseSpeed: 11, onCaught: () => caughtByPolice() };
 const bearOnly = new CANNON.Body({ mass: 500, material: bearMat, fixedRotation: true, linearDamping: 0.0, allowSleep: false });
 bearOnly.addShape(new CANNON.Sphere(1.2), new CANNON.Vec3(0, 0, 1.0));
 bearOnly.addShape(new CANNON.Sphere(1.2), new CANNON.Vec3(0, 0, -0.9));
@@ -194,7 +201,7 @@ function setCharacter(k) {
 window.addEventListener('keydown', (e) => {
   if (!started) return;
   const k = e.key.toLowerCase();
-  if (!keys[k]) {
+  if (!keys[k] && !(st.jailT > 0)) {
     if (k === 'b') toggleCar();
     if (k === 'h') { if (drive.car) { sfx.honk(); scareAhead(); } else doHit(); }
     if (k === 'f' && !drive.car) doStomp();
@@ -321,7 +328,9 @@ function banner(title, sub) {
   bannerT = 2.6;
 }
 
-function award(pts, label, pos, missionKey) {
+const CALM = new Set(['hideout', 'rathideout', 'swim', 'ratswim', 'statue', 'ratstatue', 'cheese', 'bigcheese']);
+function award(pts, label, pos, missionKey, heat = true) {
+  if (heat && pts >= 20 && !CALM.has(missionKey)) suspect.heat = Math.min(20, suspect.heat + Math.min(3, pts / 90));
   if (clock - lastAward < 2.5) chain++; else chain = 1;
   lastAward = clock;
   const mult = Math.min(5, 1 + Math.floor((chain - 1) / 3));
@@ -364,13 +373,38 @@ function hurtHouse(b, amount, pos, mission) {
   return r;
 }
 
+function caughtByPolice() {
+  if (drive.car) exitCar();
+  const fine = Math.min(2000, Math.round(score * 0.1));
+  score = Math.max(0, score - fine);
+  suspect.heat = 0;
+  suspect.caught = true;
+  st.jailT = 4;
+  bearBody.velocity.set(0, 0, 0);
+  sfx.siren(true, 1);
+  popup('🔒', 'Handbojor!', bearPos, '#6ab0ff');
+  banner('🚔 FÅNGAD AV POLISEN!', `Böter: -${fine} poäng. Du släpps snart...`);
+}
+game.onVillainCaught = (v) => {
+  if (Math.hypot(v.pos.x - bearPos.x, v.pos.z - bearPos.z) < 80) banner('🚔 POLISEN TOG EN SKURK!', `${v.name} åkte i finkan`);
+};
+
+function bonkCops(center, radius, dur, push) {
+  const n = police.stun(center, radius, dur, push);
+  if (n) { sfx.hit(); suspect.heat = Math.min(20, suspect.heat + 1.5 * n); award(60 * n, n > 1 ? 'Polishög!' : 'Knuffade polisen!', center); }
+}
+
+function bonkVillains(center, radius, dir) {
+  for (const v of villains.hitAt(center, radius, dir)) { sfx.hit(); award(100, `Slog till ${v.name}!`, v.pos.clone().setY(1), null, false); }
+}
+
 function tryHatch() {
   if (!city.tunnel.onHatch(bearPos) || !city.tunnel.openHatch()) return;
   sfx.crash();
   st.shake = Math.max(st.shake, 0.6);
   fx.debris(city.tunnel.hatchPos.clone().setY(0.5), [0x8a5a30, 0x5a3a1e], 20, 8);
   fx.dust(city.tunnel.hatchPos.clone().setY(0.3), 20, 8);
-  award(200, 'Hemlig lucka!', bearPos);
+  award(200, 'Hemlig lucka!', bearPos, null, false);
   banner('🐾 EN HEMLIG TUNNEL!', 'Gå nerför trappan, in under statyn!');
 }
 
@@ -412,6 +446,8 @@ function ratBite() {
   tryHatch();
   const f = forward();
   const nose = bearPos.clone().addScaledVector(f, 0.4).setY(bearPos.y + 0.15);
+  bonkCops(nose, 1.3, 2, 3);
+  bonkVillains(nose, 1.2, f);
   for (const p of city.props) {
     if (!p.inWorld || p.body.mass > 10) continue;
     tmpV.copy(p.body.position);
@@ -449,6 +485,7 @@ function doHit() {
     const center = bearPos.clone().addScaledVector(f, 2.8).setY(bearPos.y + 1.2);
     const under = hidden();
     let hitSomething = false;
+    if (!under) { bonkCops(center, 3.6, 3.5, 7); bonkVillains(center, 3.4, f); }
     for (const p of city.props) {
       if (!p.inWorld) continue;
       tmpV.copy(p.body.position);
@@ -524,6 +561,8 @@ function shockwave(radius, power) {
   }
   if (flips >= 2) award(150 * flips, `STAMPKOMBO x${flips}!`, bearPos);
   if (under) return;
+  bonkCops(bearPos, radius * 0.6, 3, 8);
+  bonkVillains(bearPos, radius * 0.5, new THREE.Vector3(0, 0, 1));
   const reach = radius * 0.35;
   for (const b of [...city.buildings]) {
     const dx = Math.max(b.min.x - bearPos.x, 0, bearPos.x - b.max.x), dz = Math.max(b.min.z - bearPos.z, 0, bearPos.z - b.max.z);
@@ -791,7 +830,9 @@ function camClip(from, to) {
 function update(dt) {
   clock += dt;
   let ix = 0, iz = 0;
-  if (started) {
+  st.jailT = Math.max(0, (st.jailT || 0) - dt);
+  if (suspect.caught && st.jailT === 0) { suspect.caught = false; banner('🔓 FRI IGEN!', 'Försök att inte åka fast igen...'); }
+  if (started && !(st.jailT > 0)) {
     if (keys.w || keys.arrowup) iz += 1;
     if (keys.s || keys.arrowdown) iz -= 1;
     if (keys.a || keys.arrowleft) ix += 1;
@@ -837,6 +878,18 @@ function update(dt) {
   bearPos.set(bearBody.position.x, bearBody.position.y - BR, bearBody.position.z);
   traffic.update(dt, bearPos);
   people.update(dt, bearPos);
+  if (started) {
+    const car = drive.car;
+    suspect.pos.copy(car ? car.body.position : bearPos).setY(0);
+    suspect.vel.copy(car ? car.body.velocity : bearBody.velocity).setY(0);
+    suspect.hidden = hidden();
+    suspect.catchable = !suspect.caught && (car ? Math.abs(drive.speed) < 6 : bearPos.y < 2.2);
+    suspect.catchR = car ? car.half[2] + 1.5 : who === 'rat' ? 0.9 : 2.3;
+    suspect.chaseSpeed = who === 'rat' && !car ? 5.6 : 11;
+    suspect.heat = Math.max(0, suspect.heat - dt * (suspect.hidden ? 1.5 : police.alert ? 0.12 : 0.5));
+    villains.update(dt, bearPos);
+    police.update(dt, [suspect, ...villains.list.filter((v) => v.state !== 'gone')], bearPos);
+  }
   if (started) {
     lamboTimer -= dt;
     if (lamboTimer <= 0 && !traffic.lambo.active) {
@@ -1018,7 +1071,7 @@ function update(dt) {
     }
   }
   for (const car of traffic.cars) {
-    if (!car.active || !car.wrecked || car.flipped) continue;
+    if (!car.active || !car.wrecked || car.flipped || car.byVillain) continue;
     const q = car.body.quaternion;
     const upY = 1 - 2 * (q.x * q.x + q.z * q.z);
     if (upY < -0.5 && car.body.velocity.length() < 2) {
@@ -1036,7 +1089,7 @@ function update(dt) {
     if (st.trampleT <= 0) { st.trampleT = 0; award(5 * st.trampled, pick(['Trampade på blommorna!', 'Blomsterkross!', 'Oj, rabatten!']), bearPos); sfx.wood(); st.trampled = 0; }
   }
   fx.updateFx(dt);
-  city.update(dt);
+  city.update(dt, [bearPos, ...villains.list.filter((v) => v.state !== 'gone').map((v) => v.pos)]);
   city.fountain.update(clock);
   for (const p of city.ponds) p.update(clock);
   const fd = Math.hypot(bearPos.x - city.fountain.center.x, bearPos.z - city.fountain.center.z);
@@ -1080,6 +1133,7 @@ function update(dt) {
 const minimap = new Minimap(city, document.getElementById('minimap'));
 let shownScore = 0;
 const lamboEl = document.getElementById('lambo');
+const wantedEl = document.getElementById('wanted');
 const lamboArrow = document.getElementById('lambo-arrow');
 const lamboText = document.getElementById('lambo-text');
 function updateUI(dt) {
@@ -1123,6 +1177,14 @@ function updateUI(dt) {
     lamboArrow.style.transform = `rotate(${ang}rad)`;
     lamboText.textContent = `💰 Lamborghini ${Math.round(Math.hypot(vx, vz))} m`;
   }
+  const wantedStars = stars(suspect.heat);
+  const wantedText = st.jailT > 0 ? '🔒 I FINKAN' : wantedStars ? `🚨 EFTERLYST ${'★'.repeat(wantedStars)}${'☆'.repeat(3 - wantedStars)}` : '';
+  if (wantedEl.textContent !== wantedText) wantedEl.textContent = wantedText;
+  wantedEl.classList.toggle('show', !!wantedText);
+  minimap.extra = [
+    ...police.officers.filter((o) => o.state === 'chase').map((o) => ({ x: o.pos.x, z: o.pos.z, e: '👮' })),
+    ...villains.list.filter((v) => v.state !== 'gone' && !v.hidden).map((v) => ({ x: v.pos.x, z: v.pos.z, e: '🦹' })),
+  ];
   if (city.mapDirty) { city.mapDirty = false; minimap.drawBackground(); }
   minimap.draw(bearPos, camYaw, st.yaw, who, lamboShow ? lambo.body.position : null);
   if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) bannerEl.classList.remove('show'); }
@@ -1139,4 +1201,4 @@ function loop(now) {
 }
 requestAnimationFrame(loop);
 
-window.__game = { drive, enterNearest: () => { const c = nearestCar(50); if (c) enterCar(c); return !!c; }, setCamYaw: (v) => (camYaw = v), get body() { return bearBody; }, get who() { return who; }, people, setLambo: (v) => (lamboTimer = v), st, bearBody, city, traffic, world, renderer, scene, camera, get score() { return score; } };
+window.__game = { police, villains, suspect, drive, enterNearest: () => { const c = nearestCar(50); if (c) enterCar(c); return !!c; }, setCamYaw: (v) => (camYaw = v), get body() { return bearBody; }, get who() { return who; }, people, setLambo: (v) => (lamboTimer = v), st, bearBody, city, traffic, world, renderer, scene, camera, get score() { return score; } };

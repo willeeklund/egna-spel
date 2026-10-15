@@ -40,6 +40,8 @@ export class Traffic {
       const r = Math.random();
       this.cars.push(this.makeCar(lane, r < 0.1 ? 'bus' : r < 0.25 ? 'suv' : r < 0.33 ? 'taxi' : 'car'));
     }
+    for (let i = 0; i < 2; i++) this.cars.push(this.makeCar(this.randomLane(), 'police'));
+    this.time = 0;
     this.makeLambo();
   }
 
@@ -92,7 +94,7 @@ export class Traffic {
       box(0.25, 0.12, 0.02, mat(0x3fae4a), -0.9, 1.95, -0.4);
       wheels([-0.95, 0.95], [-1.5, 1.45], 0.38, 0.38);
     } else {
-      const suv = kind === 'suv', taxi = kind === 'taxi';
+      const suv = kind === 'suv', taxi = kind === 'taxi', police = kind === 'police';
       const bh = suv ? 0.85 : 0.62, cy = suv ? 0.5 : 0.42, ch = suv ? 0.75 : 0.62, len = suv ? 4.7 : 4.5;
       const top = cy + bh / 2 + 0.3;
       half = [1.0, (top + ch) / 2, len / 2 + 0.05];
@@ -106,6 +108,8 @@ export class Traffic {
       box(0.2, 0.13, 0.12, paint, -1.08, top + 0.15, 0.75); box(0.2, 0.13, 0.12, paint, 1.08, top + 0.15, 0.75);
       for (const x of [-0.68, 0.68]) { box(0.42, 0.16, 0.06, this.head, x, top - 0.12, len / 2 + 0.01); box(0.45, 0.15, 0.06, this.tail, x, top - 0.12, -len / 2 - 0.01); }
       if (taxi) { box(0.7, 0.22, 0.3, mat(0xfff4b0), 0, top + ch + 0.17, -0.3); box(2.02, 0.12, len - 0.6, black, 0, top - 0.32, 0); }
+      if (police) { box(2.03, 0.22, len - 0.5, mat(0x1f3f8f), 0, top - 0.3, 0); box(2.03, 0.08, len - 0.5, mat(0xffd23f), 0, top - 0.14, 0); box(1.3, 0.08, 0.3, black, 0, top + ch + 0.08, -0.3); }
+      this.roofY = top + ch + 0.17 - half[1];
       wheels([-0.92, 0.92], [-len * 0.31, len * 0.32], suv ? 0.46 : 0.4, suv ? 0.46 : 0.4);
     }
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -114,15 +118,25 @@ export class Traffic {
   }
 
   makeCar(lane, kind) {
-    const color = kind === 'bus' ? pickOf([0xd7262e, 0xf2b705, 0x1f6fd1]) : kind === 'lambo' ? 0xffc21a : kind === 'taxi' ? 0xffcc00 : COLORS[(Math.random() * COLORS.length) | 0];
+    const color = kind === 'police' ? 0xf4f4f4 : kind === 'bus' ? pickOf([0xd7262e, 0xf2b705, 0x1f6fd1]) : kind === 'lambo' ? 0xffc21a : kind === 'taxi' ? 0xffcc00 : COLORS[(Math.random() * COLORS.length) | 0];
     const { g, half } = this.buildMesh(kind, color);
     const outer = bake(g, { roughness: 0.3, metalness: 0.35 });
+    let lights = null;
+    if (kind === 'police') {
+      lights = [0xff2020, 0x2060ff].map((c, k) => {
+        const m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.3 });
+        const l = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.28), m);
+        l.position.set(k ? 0.32 : -0.32, this.roofY, -0.3);
+        outer.add(l);
+        return m;
+      });
+    }
     this.game.scene.add(outer);
     const body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, material: this.game.physMat, allowSleep: false });
     body.addShape(new CANNON.Box(new CANNON.Vec3(...half)));
     this.game.world.addBody(body);
     const isBus = kind === 'bus', isLambo = kind === 'lambo';
-    const car = { kind, color, mesh: outer, body, half, isBus, isLambo, lane, speed: 0, cruise: isBus ? 8 : isLambo ? 19 : 9 + Math.random() * 6, wrecked: false, wreckT: 0, flipped: false, panic: 0, honkT: 0, brakeT: 0, active: true, aliveT: 0 };
+    const car = { kind, color, isPolice: kind === 'police', lights, alertT: 0, mesh: outer, body, half, isBus, isLambo, lane, speed: 0, cruise: isBus ? 8 : isLambo ? 19 : 9 + Math.random() * 6, wrecked: false, wreckT: 0, flipped: false, panic: 0, honkT: 0, brakeT: 0, active: true, aliveT: 0 };
     body.userData = { car };
     this.placeOnLane(car, lane.t);
     return car;
@@ -258,6 +272,7 @@ export class Traffic {
     b.wakeUp();
     car.wrecked = false;
     car.flipped = false;
+    car.byVillain = false;
     const { lane, t } = this.freeSpot(this.lastBear || new THREE.Vector3(), 110, 9999);
     car.lane = lane;
     this.placeOnLane(car, t);
@@ -266,6 +281,15 @@ export class Traffic {
 
   update(dt, bearPos) {
     this.lastBear = bearPos;
+    this.time += dt;
+    for (const car of this.cars) {
+      if (!car.lights) continue;
+      car.alertT = Math.max(0, car.alertT - dt);
+      const on = this.game.police?.alert || car.alertT > 0;
+      const f = Math.sin(this.time * 14) > 0;
+      car.lights[0].emissiveIntensity = on ? (f ? 4 : 0.1) : 0.3;
+      car.lights[1].emissiveIntensity = on ? (f ? 0.1 : 4) : 0.3;
+    }
     const tmp = new THREE.Vector3();
     for (const car of this.cars) {
       const b = car.body;

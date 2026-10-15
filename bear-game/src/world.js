@@ -137,6 +137,7 @@ export class City {
     this.props = [];
     this.chunks = [];
     this.collapsing = [];
+    this.ruins = [];
     this.templates = {};
     this.buildMaterials();
     this.buildPropTemplates();
@@ -281,7 +282,42 @@ export class City {
     this.collapsing.at(-1).rubble = rubble;
   }
 
-  update(dt) {
+  rebuild(r) {
+    const { b } = r;
+    b.hp = b.maxHp;
+    b.shakeT = 0;
+    for (const m of b.tint || []) m.color.setScalar(1);
+    b.meshes.forEach((m, j) => { m.visible = true; m.rotation.x = m.rotation.z = 0; m.position.copy(r.base[j]).y -= r.h + 2; });
+    this.world.addBody(b.body);
+    this.buildings.push(b);
+    if (!b.noCam) this.camBoxes.push(b);
+    this.mapDirty = true;
+    this.scene.remove(r.rubble);
+    r.rubble.children[0].geometry.dispose();
+    r.riseT = 0;
+    this.game.sfx.rumble();
+  }
+
+  blockedByMover(b, movers) {
+    return movers.some((p) => p.x > b.min.x - 1.5 && p.x < b.max.x + 1.5 && p.z > b.min.z - 1.5 && p.z < b.max.z + 1.5 && p.y < b.max.y);
+  }
+
+  update(dt, movers = []) {
+    for (let i = this.ruins.length - 1; i >= 0; i--) {
+      const r = this.ruins[i];
+      if (r.riseT === undefined) {
+        r.wait -= dt;
+        if (r.wait > 0) continue;
+        if (this.blockedByMover(r.b, movers)) { r.wait = 1; continue; }
+        this.rebuild(r);
+      }
+      r.riseT += dt;
+      const k = Math.min(1, r.riseT / 1.8);
+      const e = 1 - (1 - k) * (1 - k);
+      r.b.meshes.forEach((m, j) => m.position.set(r.base[j].x, r.base[j].y - (r.h + 2) * (1 - e), r.base[j].z));
+      if (Math.random() < dt * 25) fx.dust(new THREE.Vector3(r.cx + rnd(-r.w / 2, r.w / 2), 0.5, r.cz + rnd(-r.d / 2, r.d / 2)), 2, 3, 1.8);
+      if (k >= 1) this.ruins.splice(i, 1);
+    }
     for (const b of this.buildings) {
       if (!(b.shakeT > 0)) continue;
       b.shakeT = Math.max(0, b.shakeT - dt);
@@ -308,6 +344,7 @@ export class City {
         c.rubble.visible = true;
         fx.dust(new THREE.Vector3(c.cx, 1, c.cz), 30, Math.max(c.w, c.d) * 0.7, 2.5);
         this.collapsing.splice(i, 1);
+        this.ruins.push({ ...c, wait: rnd(20, 25) - 2.6 });
       }
     }
     for (let i = this.chunks.length - 1; i >= 0; i--) {
