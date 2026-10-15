@@ -15,7 +15,7 @@ async function boot() {
     }
   };
   loop();
-  game.ui.ready(() => game.start());
+  game.ui.ready((profile) => game.start(profile));
 }
 
 boot();

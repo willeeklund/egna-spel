@@ -3,6 +3,7 @@ export class Audio {
     this.ctx = null;
     this.muted = false;
     this.musicTimer = null;
+    this.scale = 1;
   }
 
   init() {
@@ -23,7 +24,8 @@ export class Audio {
   }
 
   tone(freq, dur, { type = 'sine', vol = 0.3, slide = 0, delay = 0, attack = 0.005 } = {}) {
-    if (!this.ctx) return;
+    if (!this.ctx || this.scale <= 0.01) return;
+    vol *= this.scale;
     const t = this.ctx.currentTime + delay;
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -39,7 +41,8 @@ export class Audio {
   }
 
   noise(dur, { vol = 0.3, freq = 1000, q = 1, type = 'lowpass', delay = 0, sweepTo = null } = {}) {
-    if (!this.ctx) return;
+    if (!this.ctx || this.scale <= 0.01) return;
+    vol *= this.scale;
     const t = this.ctx.currentTime + delay;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuf;

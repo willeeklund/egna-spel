@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStitch } from './models/stitch.js';
+import { createNameTag } from './models/nameTag.js';
 import { createRock } from './models/rockFood.js';
 
 const HALF = 0.35;
@@ -53,6 +54,18 @@ export class Player {
     this.basket.scale.setScalar(1.5);
     this.basket.visible = false;
     this.group.add(this.basket);
+  }
+
+  setLook(palette, name, color) {
+    const old = this.group;
+    this.stitch = createStitch({ palette });
+    this.group = this.stitch.group;
+    this.group.add(this.held, this.basket);
+    this.group.position.copy(old.position);
+    this.group.rotation.copy(old.rotation);
+    this.game.scene.remove(old);
+    this.game.scene.add(this.group);
+    if (name) this.group.add(createNameTag(name, color));
   }
 
   teleport(p, heading) {

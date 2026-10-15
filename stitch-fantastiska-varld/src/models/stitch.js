@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { std, mesh, signTexture } from '../core/util.js';
 
-const BLUE = 0x3f7fe0;
-const DARK = 0x2a4fa8;
-const LIGHT = 0x9cc8ff;
-const PINK = 0xff8fc0;
+export const PALETTES = {
+  blå: { name: 'Blå', body: 0x3f7fe0, dark: 0x2a4fa8, light: 0x9cc8ff, ear: 0xff8fc0, css: '#3f7fe0' },
+  rosa: { name: 'Rosa', body: 0xff8fc8, dark: 0xd9579a, light: 0xffd6ec, ear: 0xc04a8a, css: '#ff8fc8' },
+  lila: { name: 'Lila', body: 0x9a6cff, dark: 0x6a42d1, light: 0xd9c9ff, ear: 0xff8fc0, css: '#9a6cff' },
+  grön: { name: 'Grön', body: 0x4fc98a, dark: 0x2c9560, light: 0xc0f2d6, ear: 0xffb3d1, css: '#4fc98a' },
+  orange: { name: 'Orange', body: 0xff9a4d, dark: 0xd96a1f, light: 0xffd8b8, ear: 0xff7eb6, css: '#ff9a4d' },
+  gul: { name: 'Gul', body: 0xffd34d, dark: 0xd9a21c, light: 0xfff2c2, ear: 0xff8fc0, css: '#f2c230' },
+  turkos: { name: 'Turkos', body: 0x3fc9d6, dark: 0x22939e, light: 0xc2f4f8, ear: 0xff8fc0, css: '#3fc9d6' },
+};
 const NAVY = 0x1a2350;
 
 function earGeometry(notched) {
@@ -40,15 +45,16 @@ function claws(parent, n, y, z, spread, len = 0.07) {
   }
 }
 
-export function createStitch({ cashier = false } = {}) {
+export function createStitch({ cashier = false, palette = 'blå' } = {}) {
+  const P = PALETTES[palette] || PALETTES.blå;
   const root = new THREE.Group();
   const rig = new THREE.Group();
   root.add(rig);
 
-  const blue = std(BLUE, { roughness: 0.75 });
-  const dark = std(DARK, { roughness: 0.8 });
-  const light = std(LIGHT, { roughness: 0.75 });
-  const pink = std(PINK, { roughness: 0.6, side: THREE.DoubleSide });
+  const blue = std(P.body, { roughness: 0.75 });
+  const dark = std(P.dark, { roughness: 0.8 });
+  const light = std(P.light, { roughness: 0.75 });
+  const pink = std(P.ear, { roughness: 0.6, side: THREE.DoubleSide });
   const navy = std(NAVY, { roughness: 0.3 });
   const eyeMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0f24, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02 });
   const white = std(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 });

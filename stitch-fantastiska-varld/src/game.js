@@ -16,6 +16,8 @@ import { createShopInterior } from './interiors/shop.js';
 import { Player } from './player.js';
 import { Creatures } from './world/creatures.js';
 import { Quests } from './quests.js';
+import { Bots } from './world/bots.js';
+import { PALETTES } from './models/stitch.js';
 import { rockType } from './models/rockFood.js';
 import { lerpAngle } from './core/util.js';
 
@@ -158,13 +160,18 @@ export class Game {
     this.lastContextLabel = '';
   }
 
-  start() {
+  start(profile = { name: 'Stitch', palette: 'blå' }) {
+    this.profile = profile;
+    this.player.setLook(profile.palette, profile.name, PALETTES[profile.palette].css);
+    this.bots = new Bots(this, profile.palette, profile.name);
+    this.interactables.push(...this.bots.interactables());
+    this.applyLocation();
     this.started = true;
     this.audio.init();
     this.ui.setLocation('Stitch fantastiska värld');
     setTimeout(() => {
       this.player.stitch.wave(2);
-      this.ui.say(() => this.headPos(), 'Aloha! Jag är Stitch! 👋', 3000);
+      this.ui.say(() => this.headPos(), `Aloha! Jag är ${profile.name}! 👋`, 3000);
     }, 900);
     setTimeout(() => this.ui.toast('Följ den gula pilen 💛 och klara uppdragen högst upp!', 4500), 4200);
     setInterval(() => this.saveGame(), 5000);
@@ -199,7 +206,7 @@ export class Game {
   }
 
   headPos() {
-    return this.player.group.position.clone().add(new THREE.Vector3(0, 2.1, 0));
+    return this.player.group.position.clone().add(new THREE.Vector3(0, 2.6, 0));
   }
 
   addStars(n) {
@@ -233,6 +240,7 @@ export class Game {
     for (const r of this.outdoor.rockets) r.group.visible = out;
     for (const s of this.starField.stars) s.g.parent && (s.g.visible = out && s.active);
     this.creatures.setVisible(out);
+    this.bots?.setVisible(out);
     if (!out) this.creatures.releaseFollowers();
     this.house.group.visible = loc === 'house';
     this.shop.group.visible = loc === 'shop';
@@ -347,7 +355,19 @@ export class Game {
     }
   }
 
+  audioAt(pos, fn, range = 45) {
+    const d = this.location === 'outside' ? Math.hypot(pos.x - this.player.pos.x, pos.z - this.player.pos.z) : range;
+    const old = this.audio.scale;
+    this.audio.scale = Math.max(0, 1 - d / range) ** 1.5;
+    fn();
+    this.audio.scale = old;
+  }
+
   onRocketLaunched(rocket) {
+    if (rocket.launcher) {
+      if (this.location === 'outside' && Math.hypot(rocket.basePos.x - this.player.pos.x, rocket.basePos.z - this.player.pos.z) < 25) this.shake = 0.6;
+      return;
+    }
     this.addStars(1);
     this.ui.toast(`Wiii! ${rocket.cfg.name}s raket flyger! +1 ⭐`);
     this.shake = 1.2;
@@ -660,6 +680,7 @@ export class Game {
       this.outdoor.update(dt, this.time);
       this.creatures.update(dt, this.time, this.started && !this.busy);
     }
+    if (this.bots) this.bots.update(dt, this.time);
     if (this.started) this.quests.update(dt);
     if (this.flying.length) this.updateFlying(dt);
     this.starField.update(dt, this.time, this.player.pos, this.location === 'outside' && this.started);

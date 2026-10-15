@@ -62,11 +62,12 @@ export class Rocket {
 
   get home() { return this.state === 'idle'; }
 
-  hit() {
+  hit(by = null) {
     if (this.state !== 'idle') return false;
     this.state = 'shake';
     this.t = 0;
-    this.game.audio.whack();
+    this.launcher = by;
+    this.game.audioAt(this.basePos, () => this.game.audio.whack());
     return true;
   }
 
@@ -103,7 +104,7 @@ export class Rocket {
           this.t = 0;
           this.flame.visible = true;
           this.body.position.x = this.body.position.z = 0;
-          this.game.audio.launch();
+          this.game.audioAt(this.basePos, () => this.game.audio.launch(), 140);
           p.dust(this.basePos.clone().setY(0.5), 40);
           this.game.onRocketLaunched(this);
         }
@@ -132,7 +133,7 @@ export class Rocket {
           this.t = 0;
           this.body.rotation.y = 0;
           this.parachute.visible = true;
-          this.game.audio.pop();
+          this.game.audioAt(this.basePos, () => this.game.audio.pop(), 100);
         }
         break;
       case 'down': {
@@ -145,7 +146,7 @@ export class Rocket {
           this.t = 0;
           this.body.rotation.set(0, 0, 0);
           p.dust(this.basePos.clone().setY(0.4), 30);
-          this.game.audio.land();
+          this.game.audioAt(this.basePos, () => this.game.audio.land(), 100);
         }
         break;
       }

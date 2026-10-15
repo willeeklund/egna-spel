@@ -43,6 +43,16 @@ export class StarField {
     s.active = true;
   }
 
+  take(s) {
+    if (!s.active) return false;
+    s.active = false;
+    s.g.visible = false;
+    s.timer = 15 + Math.random() * 10;
+    this.game.particles.sparkle(s.g.position, [0xfff27a, 0xffd34d, 0xffffff], 20, 3);
+    this.game.audioAt(s.g.position, () => this.game.audio.coin(), 30);
+    return true;
+  }
+
   update(dt, time, playerPos, outdoors) {
     for (const s of this.stars) {
       if (!s.active) {

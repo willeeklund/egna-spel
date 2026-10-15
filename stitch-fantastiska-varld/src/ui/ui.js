@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { rockType } from '../models/rockFood.js';
+import { PALETTES } from '../models/stitch.js';
+
+const PROFILE_KEY = 'stitch-fantastiska-varld-profil';
 
 const html = /* html */ `
   <div class="start" id="start">
@@ -7,6 +10,13 @@ const html = /* html */ `
       <div class="start-stars">✦ ✧ ✦</div>
       <h1>Stitch<br/><span>fantastiska värld</span></h1>
       <p>Hjälp Stitch att skjuta upp raketer, samla stjärnor och handla god stenmat i de flygande butikerna!</p>
+      <div class="profile">
+        <label class="name-label">Vad heter din Stitch?
+          <input id="nameInput" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Stitch" />
+        </label>
+        <div class="swatch-title">Välj färg <kbd>←</kbd> <kbd>→</kbd></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
       <button id="play" class="big-btn" disabled>Laddar…</button>
       <p class="start-hint">Tryck <kbd>Enter</kbd> eller klicka för att börja</p>
     </div>
@@ -169,9 +179,13 @@ export class UI {
     window.addEventListener('keydown', (e) => {
       const start = this.$('start');
       if (start && !start.classList.contains('gone')) {
-        if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space') {
+        const typing = e.target && e.target.tagName === 'INPUT';
+        if (e.code === 'Enter' || e.code === 'NumpadEnter' || (e.code === 'Space' && !typing)) {
           e.preventDefault();
           this.$('play').click();
+        } else if ((e.code === 'ArrowLeft' || e.code === 'ArrowRight') && !(typing && e.target.value)) {
+          e.preventDefault();
+          this.cyclePalette(e.code === 'ArrowLeft' ? -1 : 1);
         }
         return;
       }
@@ -213,14 +227,55 @@ export class UI {
     return v;
   }
 
+  loadProfile() {
+    try {
+      return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null') || {};
+    } catch {
+      return {};
+    }
+  }
+
+  cyclePalette(dir) {
+    const keys = Object.keys(PALETTES);
+    const i = keys.indexOf(this.palette);
+    this.selectPalette(keys[(i + dir + keys.length) % keys.length]);
+  }
+
+  selectPalette(key) {
+    this.palette = key;
+    this.$('swatches').querySelectorAll('button').forEach((b) => b.classList.toggle('selected', b.dataset.p === key));
+  }
+
   ready(onPlay) {
+    const profile = this.loadProfile();
+    const input = this.$('nameInput');
+    input.value = profile.name || '';
+    const sw = this.$('swatches');
+    for (const [key, p] of Object.entries(PALETTES)) {
+      const b = document.createElement('button');
+      b.className = 'swatch';
+      b.dataset.p = key;
+      b.style.setProperty('--c', p.css);
+      b.title = p.name;
+      b.setAttribute('tabindex', '-1');
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.selectPalette(key);
+      });
+      sw.appendChild(b);
+    }
+    this.selectPalette(PALETTES[profile.palette] ? profile.palette : 'blå');
+
     const btn = this.$('play');
     btn.disabled = false;
     btn.textContent = 'Spela! 🚀';
     btn.addEventListener('click', () => {
+      const name = input.value.trim() || 'Stitch';
+      try { localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, palette: this.palette })); } catch {}
+      input.blur();
       this.$('start').classList.add('gone');
       setTimeout(() => this.$('start').remove(), 800);
-      onPlay();
+      onPlay({ name, palette: this.palette });
     });
   }
 

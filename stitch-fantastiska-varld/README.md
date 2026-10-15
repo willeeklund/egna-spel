@@ -20,7 +20,7 @@ Du behöver ha **Node.js** installerat (version 24, se `.nvmrc` – kör `nvm us
    ```
 
 4. Webbläsaren öppnas av sig själv (annars går du till adressen som syns i terminalen, till exempel `http://localhost:5173`).
-5. Tryck på **Spela! 🚀**
+5. Skriv vad din Stitch ska heta och välj en färg (blå, rosa, lila, grön, orange, gul eller turkos). Tryck sedan på **Spela! 🚀** eller `Enter`. Spelet kommer ihåg namnet och färgen till nästa gång.
 
 Vill du göra en färdig version som går att lägga upp på en webbsida kör du `npm run build`. Då hamnar spelet i mappen `dist/`.
 
@@ -56,6 +56,19 @@ De första uppdragen lär dig spelet steg för steg: gå till fontänen, skjut u
 Spelet **sparar automatiskt** stjärnor, ryggsäck och uppdrag. Vill du börja om trycker du `H` och väljer *Börja om från början*.
 
 ## Vad finns i världen?
+
+### 🐙 Andra Stitchar
+Du är inte ensam på ön! Fem andra Stitchar i olika färger går omkring och spelar: **Kiki, Momo, Zigge, Pip och Luna**. Namnet syns ovanför huvudet. Det är datorn som styr dem, men de gör samma saker som du:
+
+- skjuter upp raketer 🚀
+- samlar stjärnor ⭐ (skynda dig, annars tar de dem!)
+- jagar och gosar med Pluppar 🐰
+- studsar på studsmattan 🎪
+- åker in i butikerna 🛸 och kommer ut och äter sin sten
+- går in i husen 🏠 och kommer ut igen
+- sparkar bollar, hälsar på rymdvännerna och kommer fram och säger hej till dig
+
+Gå fram till en annan Stitch och tryck på den lila knappen (`E`) för att säga hej. När en annan Stitch skjuter upp en raket får du ingen stjärna, men raketen kommer tillbaka efter en stund. Under Rymdloppet låter de bli raketerna, så att du hinner.
 
 ### 🐰 Pluppar
 Små fluffiga varelser med långa öron och en lysande antenn som hoppar runt på ön. Kommer du nära blir de rädda och hoppar iväg i sicksack, så du får springa ikapp dem! När du fångar en får du **1 ⭐**, och Pluppen hoppar sedan efter dig i ett **Plupp-tåg**. Går du in i ett hus eller en butik hoppar Plupparna hem igen.
@@ -143,7 +156,7 @@ src/
   player.js            Stitchs rörelser och fysik
   core/                fysik, ljud och hjälpfunktioner
   models/              Stitch, raket-hus, flygande tefat, stenmat
-  world/               ön, himlen, stjärnor, raketer, Pluppar, rymdvänner och fjärilar
+  world/               ön, himlen, stjärnor, raketer, Pluppar, rymdvänner, fjärilar och Stitch-kompisarna (bots.js)
   interiors/           huset och butiken inuti
   ui/                  knappar och text på skärmen
   fx/                  partiklar (eld, rök, glitter, hjärtan)

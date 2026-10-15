@@ -316,6 +316,7 @@ export function createOutdoor(game) {
     bench.rotation.y = a + Math.PI;
     root.add(bench);
     physics.fixedBox({ x: bench.position.x, y: 0.35, z: bench.position.z }, { x: 1.1, y: 0.35, z: 0.4 }, a);
+    obstacles.push({ x: bench.position.x, z: bench.position.z, r: 1.4 });
   }
 
   const sign = new THREE.Group();
@@ -624,5 +625,5 @@ export function createOutdoor(game) {
     }
   }
 
-  return { root, rockets, shops, trampoline: { pos: trampPos, radius: 2.05, top: 0.9 }, kickables, randomFree, free, update };
+  return { root, rockets, shops, trampoline: { pos: trampPos, radius: 2.05, top: 0.9 }, kickables, randomFree, free, obstacles, update };
 }
