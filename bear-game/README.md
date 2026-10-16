@@ -91,6 +91,9 @@ Allt som björnen knuffar, slår eller stampar iväg ger poäng:
 | **River en villa** | **300** |
 | **River ett hyreshus** | **500** |
 | **River en skyskrapa** | **800** |
+| Knuffar omkull en polis | 60 |
+| Slår till en skurk | 100 |
+| Åker fast hos polisen | −10 % av poängen (som mest −2000) |
 | **Välter en bil** | **200** |
 | **Bil på taket** (bilen landar upp och ner) | **+300** |
 | **Välter en buss** | **500** |
@@ -143,6 +146,34 @@ Alla villor, hyreshus och skyskrapor går att riva! Slå på huset med **H** så
 
 En vanlig stamp (**F**) bredvid ett hus räknas som ett slag och en **MEGASTAMP** som två. Råttan kan också krascha sönder hus med bilen. När huset inte håller längre rasar det ihop i ett dammoln, bitar flyger åt alla håll och kvar blir en grushög. Huset försvinner också från kartan.
 
+Efter ungefär **20–25 sekunder** byggs huset upp igen. Det växer upp ur marken, helt nytt, och går att riva en gång till. Står du (eller en skurk) mitt i grushögen väntar bygget tills du har flyttat på dig.
+
+## 🚔 Polisen
+Den som busar för mycket blir **efterlyst**! Under poängen syns då en blinkande skylt med stjärnor:
+
+| Skylt | Vad det betyder |
+|---|---|
+| 🚨 EFTERLYST ★☆☆ | En polis letar efter dig |
+| 🚨 EFTERLYST ★★☆ | Två poliser |
+| 🚨 EFTERLYST ★★★ | Tre poliser jagar dig! |
+
+Ju mer bus (välta bilar, riva hus, skrämma folk), desto fler stjärnor. Poliserna kommer springande, ofta ur de vita **polisbilarna** med blåljus som kör runt i stan, och sirenen tjuter. På kartan syns de som 👮.
+
+Poliserna är **mellanbra** på att fånga dig:
+- De springer fortare än du **går**, men långsammare än du **springer** (håll in **Shift**). Både björnen och råttan kan springa ifrån dem.
+- Björnen kan slå (**H**) eller stampa (**F**) omkull en polis, så ligger polisen ner en stund. Råttan kan bita. Men då blir du ännu mer efterlyst!
+- Göm dig i **björnligans gömställe** under statyn, klättra upp på statyn med råttan, eller kör iväg snabbt med en bil. Då tappar polisen bort dig.
+- Om ingen polis ser dig på ett tag försvinner stjärnorna, och poliserna ger upp och går därifrån.
+
+Blir du fången hamnar du **i finkan** i 4 sekunder och får **böter** (10 % av poängen, som mest 2000). Sedan släpps du fri igen.
+
+## 🦹 Skurkarna
+I stan finns också en eller två **andra skurkar**: den grå björnen **Skurk-Bruno** och den svarta råttan **Skurk-Rut**. De har svarta masker och en röd namnskylt över huvudet, och på kartan syns de som 🦹. De smyger runt nära dig och busar på egen hand: de välter saker, skrämmer folk och Bruno välter till och med bilar. Du får inga poäng för deras bus.
+
+Polisen jagar skurkarna också. Om luckan till gömstället är öppen springer skurkarna dit och gömmer sig i tunneln en stund! Om polisen fångar en skurk åker den i finkan och kommer tillbaka efter en halv minut.
+
+Du kan slå till skurkarna (**H**) eller stampa på dem, så ramlar de omkull och springer iväg. Det ger 100 poäng och du blir inte efterlyst för det.
+
 ## 🌷 Blommor
 Rabatterna vid villorna och i parken går sönder när du trampar på dem. Blommorna viker sig och kronbladen flyger. Både björnen och råttan kan trampa sönder dem.
 
@@ -183,6 +214,8 @@ Nere i högra hörnet finns en rund karta över staden. Den vrider sig med kamer
 - 🌳 **Parkerna**
 - 💰 **Lamborghinin**, när den är i stan
 - 🐾 **Luckan till björnligans gömställe**, när du har öppnat den
+- 👮 **Poliser** som jagar dig
+- 🦹 **Skurkarna**
 - Blå hus är skyskrapor, orangea hus är hyreshus och gula hus är villor.
 
 Tryck **M** för att göra kartan stor och se hela staden.
@@ -249,6 +282,8 @@ bear-game/
     ├── bear.js     Björnen och hur den rör sig
     ├── rat.js      Råttan och hur den rör sig
     ├── fountain.js Fontänen med vatten, strålar och droppar
+    ├── police.js   Poliserna som jagar dig och skurkarna
+    ├── villains.js Skurkarna Skurk-Bruno och Skurk-Rut
     ├── pond.js     Parkdammen med vågor, ringar på vattnet, näckrosor och vass
     ├── tunnel.js   Den hemliga tunneln och björnligans gömställe under statyn
     ├── minimap.js  Kartan i hörnet
