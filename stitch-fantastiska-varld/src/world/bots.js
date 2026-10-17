@@ -3,6 +3,7 @@ import { createStitch, PALETTES } from '../models/stitch.js';
 import { createNameTag } from '../models/nameTag.js';
 import { createRock } from '../models/rockFood.js';
 import { WALK_RADIUS } from './outdoor.js';
+import { LOW } from '../core/quality.js';
 
 const ROSTER = [
   { name: 'Kiki', palette: 'rosa' },
@@ -40,7 +41,7 @@ export class Bots {
     this.time = 0;
     const R = game.physics.R;
     const used = new Set([playerPalette]);
-    this.bots = ROSTER.map((r, i) => {
+    this.bots = ROSTER.slice(0, LOW ? 2 : ROSTER.length).map((r, i) => {
       let palette = r.palette;
       if (used.has(palette)) palette = Object.keys(PALETTES).find((k) => !used.has(k) && !ROSTER.some((o) => o.palette === k));
       used.add(palette);

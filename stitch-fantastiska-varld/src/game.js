@@ -20,6 +20,7 @@ import { Bots } from './world/bots.js';
 import { PALETTES } from './models/stitch.js';
 import { rockType } from './models/rockFood.js';
 import { lerpAngle } from './core/util.js';
+import { LOW, simplify, mergeStatic } from './core/quality.js';
 
 const CAM_PRESETS = [
   { dist: 8.5, height: 3.6 },
@@ -44,10 +45,10 @@ export class Game {
     this.beam = null;
     this.flying = [];
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ antialias: !LOW, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(LOW ? 1 : Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = !LOW;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.95;
@@ -56,18 +57,20 @@ export class Game {
 
     const scene = new THREE.Scene();
     this.scene = scene;
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.3;
+    if (!LOW) {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = 0.3;
+    }
     scene.fog = new THREE.Fog(0xeadcff, 110, 360);
 
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2500);
     this.camera.position.set(0, 8, 30);
 
-    this.hemi = new THREE.HemisphereLight(0xeae6ff, 0xffd9ec, 0.85);
+    this.hemi = new THREE.HemisphereLight(0xeae6ff, 0xffd9ec, LOW ? 1.2 : 0.85);
     scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xfff1e0, 2.1);
-    this.sun.castShadow = true;
+    this.sun.castShadow = !LOW;
     this.sun.shadow.mapSize.set(2048, 2048);
     const sc = this.sun.shadow.camera;
     sc.left = sc.bottom = -38;
@@ -79,11 +82,13 @@ export class Game {
     scene.add(this.sun, this.sun.target);
     this.sunOffset = new THREE.Vector3(35, 60, 22);
 
-    this.composer = new EffectComposer(renderer);
-    this.composer.addPass(new RenderPass(scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.5, 1.0);
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(new OutputPass());
+    if (!LOW) {
+      this.composer = new EffectComposer(renderer);
+      this.composer.addPass(new RenderPass(scene, this.camera));
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.5, 1.0);
+      this.composer.addPass(this.bloom);
+      this.composer.addPass(new OutputPass());
+    }
 
     this.physics = new Physics(RAPIER);
     this.audio = new Audio();
@@ -104,6 +109,22 @@ export class Game {
       this.backpack = saved.backpack ?? [];
     }
     this.quests = new Quests(this, saved?.quests);
+
+    if (LOW) {
+      simplify(scene);
+      mergeStatic(this.outdoor.root, this.outdoor.moving);
+      for (const g of this.outdoor.moving) mergeStatic(g, this.outdoor.movingParts);
+      for (const r of this.outdoor.rockets) {
+        mergeStatic(r.group, [r.body]);
+        mergeStatic(r.body, [r.model.beacon, r.model.nozzleGlow, r.model.pipe, r.flame, r.parachute]);
+      }
+      for (const s of this.outdoor.shops) {
+        const blinking = [];
+        s.saucer.traverse((o) => o.isMesh && s.lights.includes(o.material) && blinking.push(o));
+        mergeStatic(s.sign);
+        mergeStatic(s.saucer, [s.sign, s.beam, s.hatch, ...blinking]);
+      }
+    }
 
     scene.traverse((o) => {
       if (!o.isMesh || o.isInstancedMesh || !o.castShadow) return;
@@ -164,6 +185,7 @@ export class Game {
     this.profile = profile;
     this.player.setLook(profile.palette, profile.name, PALETTES[profile.palette].css);
     this.bots = new Bots(this, profile.palette, profile.name);
+    simplify(this.bots.group);
     this.interactables.push(...this.bots.interactables());
     this.applyLocation();
     this.started = true;
@@ -202,7 +224,7 @@ export class Game {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
-    this.composer.setSize(w, h);
+    this.composer?.setSize(w, h);
   }
 
   headPos() {
@@ -700,6 +722,7 @@ export class Game {
     this.sun.target.position.copy(this.player.pos);
     this.sun.position.copy(this.player.pos).add(this.sunOffset);
     this.ui.updateBubbles(this.camera, window.innerWidth, window.innerHeight);
-    this.composer.render();
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 }

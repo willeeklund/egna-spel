@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { rockType } from '../models/rockFood.js';
 import { PALETTES } from '../models/stitch.js';
+import { LOW, setGraphics } from '../core/quality.js';
 
 const PROFILE_KEY = 'stitch-fantastiska-varld-profil';
 
@@ -19,6 +20,7 @@ const html = /* html */ `
       </div>
       <button id="play" class="big-btn" disabled>Laddar…</button>
       <p class="start-hint">Tryck <kbd>Enter</kbd> eller klicka för att börja</p>
+      <button id="graphicsToggle" class="graphics-toggle" tabindex="-1"></button>
     </div>
   </div>
 
@@ -265,6 +267,13 @@ export class UI {
       sw.appendChild(b);
     }
     this.selectPalette(PALETTES[profile.palette] ? profile.palette : 'blå');
+
+    const gfx = this.$('graphicsToggle');
+    gfx.textContent = LOW ? '🐢 Enkel grafik – tryck för fin' : '✨ Fin grafik – tryck för enkel';
+    gfx.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      setGraphics(LOW ? 'fin' : 'enkel');
+    });
 
     const btn = this.$('play');
     btn.disabled = false;

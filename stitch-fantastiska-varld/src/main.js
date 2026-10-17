@@ -1,6 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Game } from './game.js';
 import { startUpdateCheck } from './updateCheck.js';
+import { setGraphics, watchFrameRate } from './core/quality.js';
 
 async function boot() {
   await RAPIER.init();
@@ -16,6 +17,7 @@ async function boot() {
     }
   };
   loop();
+  watchFrameRate(() => setGraphics('enkel'));
   game.ui.ready((profile) => game.start(profile));
 }
 

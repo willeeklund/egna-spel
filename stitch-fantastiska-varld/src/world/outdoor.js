@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { std, metal, glow, mesh, canvasTexture, signTexture, rng, noise3, starShape } from '../core/util.js';
 import { Rocket } from './rocket.js';
 import { createUfoShop, UFO_HEIGHT } from '../models/ufoShop.js';
+import { LOW } from '../core/quality.js';
 
 export const ISLAND_RADIUS = 62;
 export const WALK_RADIUS = 56.5;
@@ -484,7 +485,7 @@ export function createOutdoor(game) {
     obstacles.push({ x: p.x, z: p.z, r: 0.8 });
   }
 
-  const tuftCount = 2600;
+  const tuftCount = LOW ? 1000 : 2600;
   const bladeG = new THREE.ConeGeometry(0.06, 0.45, 4);
   bladeG.translate(0, 0.22, 0);
   const tufts = new THREE.InstancedMesh(bladeG, std(0xffffff, { roughness: 0.8 }), tuftCount);
@@ -534,7 +535,7 @@ export function createOutdoor(game) {
 
   const asteroids = [];
   const astMat = std(0xc9b6f2, { flatShading: true, roughness: 0.9 });
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < (LOW ? 8 : 22); i++) {
     const g = new THREE.Group();
     const s = 1 + r() * 4;
     const geo = new THREE.IcosahedronGeometry(s, 1);
@@ -625,5 +626,8 @@ export function createOutdoor(game) {
     }
   }
 
-  return { root, rockets, shops, trampoline: { pos: trampPos, radius: 2.05, top: 0.9 }, kickables, randomFree, free, obstacles, update };
+  const moving = [starTop, ...asteroids.map((a) => a.g), ...shops.map((s) => s.group), ...kickables.map((k) => k.obj)];
+  const movingParts = shops.flatMap((s) => [s.saucer, s.sign, s.beam, s.hatch]);
+
+  return { root, rockets, shops, trampoline: { pos: trampPos, radius: 2.05, top: 0.9 }, kickables, randomFree, free, obstacles, update, moving, movingParts };
 }

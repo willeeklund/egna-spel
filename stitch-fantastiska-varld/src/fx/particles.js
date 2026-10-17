@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LOW } from '../core/quality.js';
 
 const vertex = /* glsl */ `
   attribute float pSize;
@@ -47,7 +48,7 @@ class ParticleSystem {
     this.mat = new THREE.ShaderMaterial({
       vertexShader: vertex,
       fragmentShader: fragment,
-      uniforms: { uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }, uSoft: { value: soft } },
+      uniforms: { uPixelRatio: { value: LOW ? 1 : Math.min(window.devicePixelRatio, 2) }, uSoft: { value: soft } },
       transparent: true,
       depthWrite: false,
       blending,
@@ -58,7 +59,7 @@ class ParticleSystem {
   }
 
   emit(o) {
-    const count = o.count ?? 1;
+    const count = LOW ? Math.floor((o.count ?? 1) * 0.4 + Math.random()) : o.count ?? 1;
     const c = new THREE.Color();
     for (let n = 0; n < count; n++) {
       const p = this.p[this.cursor];

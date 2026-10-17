@@ -26,6 +26,12 @@ Vill du göra en färdig version som går att lägga upp på en webbsida kör du
 
 > Tips: Spelet fungerar bäst i Chrome, Edge eller Safari. Det går att spela på surfplatta också, med knapparna på skärmen.
 
+### Fin eller enkel grafik 🐢
+
+Första gången spelet startar mäter det hur snabbt det går. Om det är för långsamt (till exempel på en äldre iPad) byter spelet själv till **enkel grafik**: lägre upplösning, inga skuggor eller glöd, enklare former och färre Stitchar och fjärilar som springer omkring. Valet sparas till nästa gång.
+
+Du kan byta själv med knappen längst ner på startskärmen, eller genom att lägga till `?grafik=enkel` eller `?grafik=fin` sist i adressen.
+
 ## Så spelar du
 
 Allt i spelet kan göras med **tangentbordet**. Varje knapp på skärmen visar vilken tangent som hör till den, och knappen lyser när man trycker på tangenten.

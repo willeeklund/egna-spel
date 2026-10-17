@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { std, glow, mesh, noise3, canvasTexture, roundRect } from '../core/util.js';
 import { rockType } from '../models/rockFood.js';
 import { WALK_RADIUS } from './outdoor.js';
+import { LOW } from '../core/quality.js';
 
 function eyes(parent, { x = 0.12, y = 0, z = 0.3, r = 0.1, look = 0.25, pupil = 0.6 } = {}) {
   const white = std(0xffffff, { roughness: 0.2 });
@@ -236,7 +237,7 @@ export class Creatures {
 
     const bfCols = [0xff9de2, 0x9df2ff, 0xfff27a, 0xc3a6ff, 0xb8ffd1];
     this.butterflies = [];
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < (LOW ? 5 : 14); i++) {
       const b = butterfly(bfCols[i % bfCols.length]);
       const home = this.spot(0.5, 11) || new THREE.Vector3(i, 0, 15);
       home.y = 1.2 + Math.random() * 1.5;
