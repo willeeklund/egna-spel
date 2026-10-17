@@ -1,0 +1,65 @@
+name: Bygg och publicera på GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: stitch-fantastiska-varld/package-lock.json
+
+      - name: Bygg Stitch fantastiska värld
+        working-directory: stitch-fantastiska-varld
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sätt ihop sajten
+        run: |
+          mkdir -p _site
+          cp -r stitch-fantastiska-varld/dist _site/stitch-fantastiska-varld
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8" />
+          <meta http-equiv="refresh" content="0; url=stitch-fantastiska-varld/" />
+          <a href="stitch-fantastiska-varld/">Stitch fantastiska värld</a>
+          HTML
+          jq -n \
+            --arg commit "$GITHUB_SHA" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg buildTime "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{commit: $commit, branch: $branch, buildTime: $buildTime}' > _site/stitch-fantastiska-varld/gitVersion.json
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

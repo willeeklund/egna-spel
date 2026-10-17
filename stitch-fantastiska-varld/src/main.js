@@ -1,5 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Game } from './game.js';
+import { startUpdateCheck } from './updateCheck.js';
 
 async function boot() {
   await RAPIER.init();
@@ -18,4 +19,5 @@ async function boot() {
   game.ui.ready((profile) => game.start(profile));
 }
 
+startUpdateCheck();
 boot();

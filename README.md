@@ -11,6 +11,13 @@ Spelen är ett sätt för barnen att lära sig använda AI-verktyg. De hittar p�
 | [🐻 Björnbus](bear-game/) | Var världens starkaste björn (eller en snabb råtta) och hitta på så mycket bus som möjligt i en stor stad. |
 | [🚀 Stitch fantastiska värld](stitch-fantastiska-varld/) | Ett 3D-spel där Stitch bor på en färgglad ö som svävar ute i rymden. |
 
+## Spela på iPad
+
+Stitch fantastiska värld publiceras automatiskt på GitHub Pages vid varje push till `main`:
+<https://willeeklund.github.io/egna-spel/stitch-fantastiska-varld/>
+
+Öppna länken i Safari, tryck på **Dela** och välj **Lägg till på hemskärmen**. Spelet kollar själv efter nya versioner och visar en knapp när det finns något nytt.
+
 ## Starta ett spel
 
 Du behöver [Node.js](https://nodejs.org) (version 24, se `.nvmrc` – kör `nvm use`).

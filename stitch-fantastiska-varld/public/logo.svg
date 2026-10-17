@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="space" cx="35%" cy="25%" r="85%">
+      <stop offset="0" stop-color="#ff9ccc"/>
+      <stop offset="0.35" stop-color="#9a6cff"/>
+      <stop offset="1" stop-color="#2b1d74"/>
+    </radialGradient>
+    <radialGradient id="head" cx="42%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#6fa4f5"/>
+      <stop offset="1" stop-color="#2f6ad0"/>
+    </radialGradient>
+    <linearGradient id="planet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#ff9a4d"/>
+    </linearGradient>
+    <linearGradient id="island" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6cd8"/>
+      <stop offset="1" stop-color="#4a3696"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#space)"/>
+
+  <g fill="#fff">
+    <circle cx="70" cy="90" r="3"/>
+    <circle cx="130" cy="50" r="2"/>
+    <circle cx="460" cy="250" r="3"/>
+    <circle cx="40" cy="300" r="2.5"/>
+    <circle cx="90" cy="440" r="3"/>
+    <circle cx="430" cy="440" r="2"/>
+    <circle cx="300" cy="40" r="2.5"/>
+    <circle cx="200" cy="80" r="1.8"/>
+  </g>
+  <g fill="#ffd166">
+    <path d="M70 360 l7 -18 7 18 18 7 -18 7 -7 18 -7 -18 -18 -7z"/>
+    <path d="M420 340 l5 -13 5 13 13 5 -13 5 -5 13 -5 -13 -13 -5z"/>
+    <path d="M250 40 l4 -10 4 10 10 4 -10 4 -4 10 -4 -10 -10 -4z"/>
+  </g>
+
+  <g transform="translate(410 105) rotate(-20)">
+    <ellipse rx="62" ry="15" fill="none" stroke="#5ff2ff" stroke-width="7" opacity="0.9"/>
+    <circle r="36" fill="url(#planet)"/>
+    <path d="M-36 0 a36 36 0 0 0 72 0" fill="#ff7a3a" opacity="0.35"/>
+    <path d="M-62 0 a62 15 0 0 0 124 0" fill="none" stroke="#5ff2ff" stroke-width="7"/>
+  </g>
+
+  <g transform="translate(256 290) scale(0.88) translate(-256 -290)">
+  <ellipse cx="256" cy="450" rx="150" ry="26" fill="#1a1150" opacity="0.35"/>
+  <path d="M120 400 q136 -40 272 0 q-20 60 -136 70 q-116 -10 -136 -70z" fill="url(#island)"/>
+  <path d="M112 402 q144 -52 288 0 q-144 30 -288 0z" fill="#4fc98a"/>
+  <path d="M140 398 q116 -34 232 0" fill="none" stroke="#9cf0c2" stroke-width="6" stroke-linecap="round"/>
+
+  <g stroke="#1a2350" stroke-width="9" stroke-linejoin="round">
+    <path d="M178 230 C130 200 80 150 44 118 C70 190 110 262 176 292 Z" fill="url(#head)"/>
+    <path d="M334 230 C382 200 432 150 468 118 C442 190 402 262 336 292 Z" fill="url(#head)"/>
+    <path d="M162 238 C128 214 98 184 78 164 C96 206 124 248 160 270 Z" fill="#ff8fc0" stroke="none"/>
+    <path d="M350 238 C384 214 414 184 434 164 C416 206 388 248 352 270 Z" fill="#ff8fc0" stroke="none"/>
+
+    <path d="M238 172 l8 -26 10 22 10 -24 8 28" fill="url(#head)"/>
+    <ellipse cx="256" cy="272" rx="122" ry="104" fill="url(#head)"/>
+  </g>
+
+  <path d="M170 300 C180 360 332 360 342 300 C330 250 300 238 256 238 C212 238 182 250 170 300 Z" fill="#9cc8ff"/>
+  <ellipse cx="204" cy="246" rx="44" ry="48" fill="#9cc8ff" transform="rotate(-18 204 246)"/>
+  <ellipse cx="308" cy="246" rx="44" ry="48" fill="#9cc8ff" transform="rotate(18 308 246)"/>
+
+  <ellipse cx="208" cy="248" rx="33" ry="40" fill="#0a0f24" transform="rotate(-18 208 248)"/>
+  <ellipse cx="304" cy="248" rx="33" ry="40" fill="#0a0f24" transform="rotate(18 304 248)"/>
+  <circle cx="198" cy="232" r="12" fill="#fff"/>
+  <circle cx="294" cy="232" r="12" fill="#fff"/>
+  <circle cx="220" cy="266" r="5" fill="#fff"/>
+  <circle cx="316" cy="266" r="5" fill="#fff"/>
+
+  <ellipse cx="256" cy="290" rx="28" ry="18" fill="#1a2350"/>
+  <ellipse cx="248" cy="284" rx="9" ry="5" fill="#5a6ab0"/>
+
+  <path d="M200 316 Q256 376 312 316 Q256 334 200 316 Z" fill="#1a2350" stroke="#1a2350" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M232 340 Q256 362 280 340 Q256 334 232 340 Z" fill="#ff6fae"/>
+  <path d="M214 322 l8 14 8 -11z M298 322 l-8 14 -8 -11z" fill="#fff"/>
+
+  <ellipse cx="170" cy="318" rx="16" ry="9" fill="#ff8fc0" opacity="0.55"/>
+  <ellipse cx="342" cy="318" rx="16" ry="9" fill="#ff8fc0" opacity="0.55"/>
+  </g>
+</svg>
